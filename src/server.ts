@@ -1,28 +1,27 @@
-import { createServer } from "node:http";
-import { RPCHandler } from "@orpc/server/node";
-import { CORSPlugin } from "@orpc/server/plugins";
+import { RPCHandler } from '@orpc/server/fetch'
+import { CORSPlugin } from '@orpc/server/plugins'
 import { router } from "./contract/router.ts";
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
 import { createTestDatabase } from "./contract/shared/test-utils.ts";
 import type { DbUser } from "./db/schema.ts";
 import * as schema from "./db/schema.ts";
+import type {IncomingHttpHeaders} from "node:http";
 
 if (process.env.DATABASE_URL === undefined)
 	throw new Error("DATABASE_URL environment variable is not set. Please set it to your database URL.");
 
-// Create connection pool for better performance
-const pool = new Pool({
-	connectionString: process.env.DATABASE_URL,
-	max: 20, // Maximum number of clients in the pool
-	idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-	connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+const pool = new Bun.SQL(process.env.DATABASE_URL, {
+    max: 20, // Maximum 20 concurrent connections
+    idleTimeout: 30, // Close idle connections after 30s
+    maxLifetime: 3600, // Max connection lifetime 1 hour
+    connectionTimeout: 10, // Connection timeout 10s
 });
 
 const db = process.env.USE_TEMP_DATABASE
 	? await createTestDatabase()
-	: drizzle(pool, {
+	: drizzle({
+            client: pool,
 			schema,
 		});
 
@@ -33,25 +32,27 @@ const handler = new RPCHandler(router, {
 	plugins: [new CORSPlugin()],
 });
 
-const server = createServer(async (req, res) => {
-	const result = await handler.handle(req, res, {
-		context: { headers: req.headers, db, user: null as unknown as DbUser },
-	});
+const server = Bun.serve({
+    port: 3001,
+    async fetch(request: Request) {
+        const { matched, response } = await handler.handle(request, {
+            prefix: '/rpc',
+            context: { headers: request.headers as unknown as IncomingHttpHeaders, db, user: null as unknown as DbUser }
+        })
 
-	if (!result.matched) {
-		res.statusCode = 404;
-		res.end("No procedure matched");
-	}
-});
+        if (matched) {
+            return response
+        }
 
-server.listen(3001, "127.0.0.1", () => console.log("Listening on 127.0.0.1:3001"));
+        return new Response('Not found', { status: 404 })
+    },
+})
+
+console.log(`🚀 Server running at http://${server.hostname}:${server.port}/rpc`);
 
 // Graceful shutdown
 process.on("SIGTERM", async () => {
 	console.log("SIGTERM signal received: closing HTTP server");
-	server.close(() => {
-		console.log("HTTP server closed");
-	});
 	await pool.end();
 	console.log("Database pool closed");
 });
