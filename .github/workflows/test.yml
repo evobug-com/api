@@ -1,0 +1,52 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Type check
+        run: bunx tsgo --noEmit
+
+      - name: Lint and format check
+        run: bunx biome check .
+
+      - name: Run tests
+        run: bun test
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+          USE_TEMP_DATABASE: true
+
+      - name: Build check
+        run: bun run build || bun build src/server.ts --outdir dist --target bun
