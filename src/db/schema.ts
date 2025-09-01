@@ -294,6 +294,12 @@ export const userStatsTable = pgTable("user_stats", {
 	messagesCount: integer().notNull().default(0),
 	lastMessageAt: timestamptz(),
 
+	// Server Tag tracking
+	serverTagStreak: integer().notNull().default(0),
+	maxServerTagStreak: integer().notNull().default(0),
+	lastServerTagCheck: timestamptz(),
+	serverTagBadge: varchar({ length: 255 }), // Store badge ID to track if tag changes
+
 	// Economy totals
 	coinsCount: integer().notNull().default(0),
 	xpCount: integer().notNull().default(0),

@@ -9,7 +9,16 @@ import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions }
 // Authentication & Session Management
 // import { createSession, deleteSession } from "./auth";
 // Stats & Rewards System
-import { claimDaily, claimWork, leaderboard, userDailyCooldown, userStats, userWorkCooldown } from "./stats";
+import {
+	checkServerTagStreak,
+	claimDaily,
+	claimWork,
+	getServerTagStreak,
+	leaderboard,
+	userDailyCooldown,
+	userStats,
+	userWorkCooldown,
+} from "./stats";
 // Review System (temporarily disabled - reviews are now part of violations table)
 // import { cancelReview, getReviewStatus, listReviews, processReview, requestReview } from "./violation-reviews";
 // Suspension Management
@@ -89,6 +98,10 @@ export const router = {
 			work: {
 				cooldown: userWorkCooldown,
 				claim: claimWork,
+			},
+			serverTag: {
+				check: checkServerTagStreak,
+				get: getServerTagStreak,
 			},
 			top: leaderboard,
 			//         get: userStats, // GET /users/{userId}/stats

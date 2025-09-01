@@ -61,6 +61,10 @@ describe("Users", () => {
 				lastWorkAt: null,
 				messagesCount: 0,
 				lastMessageAt: null,
+				serverTagStreak: 0,
+				maxServerTagStreak: 0,
+				lastServerTagCheck: null,
+				serverTagBadge: null,
 				boostCount: 0,
 				boostExpires: null,
 			});
