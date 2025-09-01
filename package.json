@@ -26,9 +26,9 @@
 	},
 	"dependencies": {
 		"@electric-sql/pglite": "^0.3.7",
-		"@orpc/client": "^1.8.5",
-		"@orpc/contract": "^1.8.5",
-		"@orpc/server": "^1.8.5",
+		"@orpc/client": "^1.8.6",
+		"@orpc/contract": "^1.8.6",
+		"@orpc/server": "^1.8.6",
 		"dotenv": "^17.2.1",
 		"drizzle-orm": "^0.44.5",
 		"drizzle-zod": "^0.8.3",
