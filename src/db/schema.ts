@@ -469,9 +469,9 @@ export const productsTable = pgTable(
 		updatedAt: timestamptz().notNull().defaultNow(),
 	},
 	(table) => [
-		index("produts_isActive_idx").on(table.isActive),
-		check("produts_price_positive", sql`${table.price} >= 0`),
-		check("produts_shipping_positive", sql`${table.shippingCost} >= 0`),
+		index("products_isActive_idx").on(table.isActive),
+		check("products_price_positive", sql`${table.price} >= 0`),
+		check("products_shipping_positive", sql`${table.shippingCost} >= 0`),
 	],
 );
 
