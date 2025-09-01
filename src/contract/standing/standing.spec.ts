@@ -599,7 +599,7 @@ describe("Standing", () => {
 			await call(
 				issueViolation,
 				{
-					userId: users[1].id,
+					userId: users[1]!.id,
 					guildId: testGuildId,
 					type: ViolationType.SPAM,
 					severity: ViolationSeverity.LOW,
@@ -614,7 +614,7 @@ describe("Standing", () => {
 				await call(
 					issueViolation,
 					{
-						userId: users[2].id,
+						userId: users[2]!.id,
 						guildId: testGuildId,
 						type: ViolationType.TOXICITY,
 						severity: ViolationSeverity.MEDIUM,
@@ -629,7 +629,7 @@ describe("Standing", () => {
 			await call(
 				issueViolation,
 				{
-					userId: users[3].id,
+					userId: users[3]!.id,
 					guildId: testGuildId,
 					type: ViolationType.NSFW,
 					severity: ViolationSeverity.HIGH,
@@ -641,7 +641,7 @@ describe("Standing", () => {
 			await call(
 				issueViolation,
 				{
-					userId: users[3].id,
+					userId: users[3]!.id,
 					guildId: testGuildId,
 					type: ViolationType.TOXICITY,
 					severity: ViolationSeverity.MEDIUM,
@@ -655,7 +655,7 @@ describe("Standing", () => {
 			await call(
 				issueViolation,
 				{
-					userId: users[4].id,
+					userId: users[4]!.id,
 					guildId: testGuildId,
 					type: ViolationType.ILLEGAL,
 					severity: ViolationSeverity.CRITICAL,
@@ -683,11 +683,11 @@ describe("Standing", () => {
 			// Check each user's standing
 			const standingsMap = new Map(result.map(s => [s.userId, s]));
 			
-			expect(standingsMap.get(users[0].id)?.standing).toBe(AccountStanding.ALL_GOOD);
-			expect(standingsMap.get(users[1].id)?.standing).toBe(AccountStanding.LIMITED);
-			expect(standingsMap.get(users[2].id)?.standing).toBe(AccountStanding.VERY_LIMITED);
-			expect(standingsMap.get(users[3].id)?.standing).toBe(AccountStanding.AT_RISK);
-			expect(standingsMap.get(users[4].id)?.standing).toBe(AccountStanding.SUSPENDED);
+			expect(standingsMap.get(users[0]!.id)?.standing).toBe(AccountStanding.ALL_GOOD);
+			expect(standingsMap.get(users[1]!.id)?.standing).toBe(AccountStanding.LIMITED);
+			expect(standingsMap.get(users[2]!.id)?.standing).toBe(AccountStanding.VERY_LIMITED);
+			expect(standingsMap.get(users[3]!.id)?.standing).toBe(AccountStanding.AT_RISK);
+			expect(standingsMap.get(users[4]!.id)?.standing).toBe(AccountStanding.SUSPENDED);
 		});
 
 		it("should sort results by severity score", async () => {
@@ -704,7 +704,7 @@ describe("Standing", () => {
 
 			// Results should be sorted by severity score (highest first)
 			for (let i = 0; i < result.length - 1; i++) {
-				expect(result[i].severityScore).toBeGreaterThanOrEqual(result[i + 1].severityScore);
+				expect(result[i]!.severityScore).toBeGreaterThanOrEqual(result[i + 1]!.severityScore);
 			}
 		});
 
@@ -750,11 +750,11 @@ describe("Standing", () => {
 
 			const standingsMap = new Map(result.map(s => [s.userId, s]));
 			
-			expect(standingsMap.get(users[0].id)?.activeViolations).toBe(0);
-			expect(standingsMap.get(users[1].id)?.activeViolations).toBe(1);
-			expect(standingsMap.get(users[2].id)?.activeViolations).toBe(2);
-			expect(standingsMap.get(users[3].id)?.activeViolations).toBe(2);
-			expect(standingsMap.get(users[4].id)?.activeViolations).toBe(1);
+			expect(standingsMap.get(users[0]!.id)?.activeViolations).toBe(0);
+			expect(standingsMap.get(users[1]!.id)?.activeViolations).toBe(1);
+			expect(standingsMap.get(users[2]!.id)?.activeViolations).toBe(2);
+			expect(standingsMap.get(users[3]!.id)?.activeViolations).toBe(2);
+			expect(standingsMap.get(users[4]!.id)?.activeViolations).toBe(1);
 		});
 	});
 

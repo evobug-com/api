@@ -2,7 +2,7 @@ import { RPCHandler } from '@orpc/server/fetch'
 import { CORSPlugin } from '@orpc/server/plugins'
 import { router } from "./contract/router.ts";
 import "dotenv/config";
-import { drizzle } from "drizzle-orm/node-postgres";
+import {drizzle, type NodePgClient} from "drizzle-orm/node-postgres";
 import { createTestDatabase } from "./contract/shared/test-utils.ts";
 import type { DbUser } from "./db/schema.ts";
 import * as schema from "./db/schema.ts";
@@ -20,8 +20,7 @@ const pool = new Bun.SQL(process.env.DATABASE_URL, {
 
 const db = process.env.USE_TEMP_DATABASE
 	? await createTestDatabase()
-	: drizzle({
-            client: pool,
+	: drizzle(pool as unknown as NodePgClient, {
 			schema,
 		});
 

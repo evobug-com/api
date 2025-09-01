@@ -543,7 +543,7 @@ describe("Suspensions", () => {
 				await call(
 					createSuspension,
 					{
-						userId: users[i].id,
+						userId: users[i]!.id,
 						guildId: testGuildId,
 						reason: `Active suspension ${i}`,
 						duration: 30,
@@ -557,7 +557,7 @@ describe("Suspensions", () => {
 			const liftedResult = await call(
 				createSuspension,
 				{
-					userId: users[3].id,
+					userId: users[3]!.id,
 					guildId: testGuildId,
 					reason: "Lifted suspension",
 					issuedBy: issuerUser.id,
@@ -567,7 +567,7 @@ describe("Suspensions", () => {
 			await call(
 				liftSuspension,
 				{
-					userId: users[3].id,
+					userId: users[3]!.id,
 					guildId: testGuildId,
 					liftedBy: lifterUser.id,
 				},
@@ -578,7 +578,7 @@ describe("Suspensions", () => {
 			const expiredResult = await call(
 				createSuspension,
 				{
-					userId: users[4].id,
+					userId: users[4]!.id,
 					guildId: testGuildId,
 					reason: "Expired suspension",
 					duration: 1,
@@ -653,7 +653,7 @@ describe("Suspensions", () => {
 			);
 
 			expect(result.suspensions).toHaveLength(1);
-			expect(result.suspensions[0].userId).toBe(user.id);
+			expect(result.suspensions[0]!.userId).toBe(user.id);
 		});
 
 		it("should respect limit and offset", async () => {
@@ -681,8 +681,8 @@ describe("Suspensions", () => {
 			);
 
 			for (let i = 0; i < result.suspensions.length - 1; i++) {
-				const current = new Date(result.suspensions[i].startedAt);
-				const next = new Date(result.suspensions[i + 1].startedAt);
+				const current = new Date(result.suspensions[i]!.startedAt);
+				const next = new Date(result.suspensions[i + 1]!.startedAt);
 				expect(current.getTime()).toBeGreaterThanOrEqual(next.getTime());
 			}
 		});
@@ -725,9 +725,9 @@ describe("Suspensions", () => {
 				createTestContext(db),
 			);
 
-			expect(result.suspensions[0].user).toBeDefined();
-			expect(result.suspensions[0].issuer).toBeDefined();
-			expect(result.suspensions[0].lifter).toBeDefined();
+			expect(result.suspensions[0]!.user).toBeDefined();
+			expect(result.suspensions[0]!.issuer).toBeDefined();
+			expect(result.suspensions[0]!.lifter).toBeDefined();
 		});
 	});
 
@@ -881,8 +881,8 @@ describe("Suspensions", () => {
 
 			// Verify descending order
 			for (let i = 0; i < result.suspensions.length - 1; i++) {
-				const current = new Date(result.suspensions[i].startedAt);
-				const next = new Date(result.suspensions[i + 1].startedAt);
+				const current = new Date(result.suspensions[i]!.startedAt);
+				const next = new Date(result.suspensions[i + 1]!.startedAt);
 				expect(current.getTime()).toBeGreaterThanOrEqual(next.getTime());
 			}
 		});
@@ -1008,7 +1008,7 @@ describe("Suspensions", () => {
 				),
 			});
 
-			expect(activeSuspensions[0].liftedAt).toBeNull();
+			expect(activeSuspensions[0]!.liftedAt).toBeNull();
 		});
 
 		it("should not affect already lifted suspensions", async () => {
@@ -1033,9 +1033,9 @@ describe("Suspensions", () => {
 			});
 
 			// Should not change already lifted suspension
-			expect(afterLiftedSuspensions[0].liftReason).not.toBe("Suspension expired automatically");
-			expect(afterLiftedSuspensions[0].updatedAt.getTime()).toBe(
-				beforeLiftedSuspensions[0].updatedAt.getTime()
+			expect(afterLiftedSuspensions[0]!.liftReason).not.toBe("Suspension expired automatically");
+			expect(afterLiftedSuspensions[0]!.updatedAt.getTime()).toBe(
+				beforeLiftedSuspensions[0]!.updatedAt.getTime()
 			);
 		});
 

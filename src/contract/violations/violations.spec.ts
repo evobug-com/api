@@ -101,7 +101,7 @@ describe("Violations", () => {
 				createTestContext(db, issuerUser),
 			);
 
-			const expiresAt = new Date(result.violation.expiresAt);
+			const expiresAt = new Date(result.violation.expiresAt!);
 			const now = new Date();
 			const diffInDays = Math.round((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 			
@@ -123,7 +123,7 @@ describe("Violations", () => {
 				createTestContext(db, issuerUser),
 			);
 
-			const restrictions = JSON.parse(result.violation.restrictions);
+			const restrictions = JSON.parse(result.violation.restrictions!);
 			expect(restrictions).toContain(FeatureRestriction.MESSAGE_ATTACH);
 			expect(restrictions).toContain(FeatureRestriction.MESSAGE_EMBED);
 			expect(restrictions).toContain(FeatureRestriction.VOICE_VIDEO);
@@ -150,7 +150,7 @@ describe("Violations", () => {
 				createTestContext(db, issuerUser),
 			);
 
-			const restrictions = JSON.parse(result.violation.restrictions);
+			const restrictions = JSON.parse(result.violation.restrictions!);
 			expect(restrictions).toEqual(customRestrictions);
 		});
 
@@ -175,7 +175,7 @@ describe("Violations", () => {
 			expect(result.violation.policyViolated).toBe("Privacy Policy Section 3.2");
 			expect(result.violation.contentSnapshot).toBe("User shared: [redacted personal info]");
 			expect(result.violation.context).toBe("In #general channel during heated discussion");
-			expect(JSON.parse(result.violation.actionsApplied)).toEqual(["message_deleted", "user_warned"]);
+			expect(JSON.parse(result.violation.actionsApplied!)).toEqual(["message_deleted", "user_warned"]);
 		});
 
 		it("should calculate SUSPENDED standing for critical violations", async () => {
@@ -290,7 +290,7 @@ describe("Violations", () => {
 				createTestContext(db, issuerUser),
 			);
 
-			const restrictions = JSON.parse(result.violation.restrictions);
+			const restrictions = JSON.parse(result.violation.restrictions!);
 			expect(restrictions).toContain(FeatureRestriction.TIMEOUT);
 			expect(result.accountStanding).toBe(AccountStanding.SUSPENDED);
 		});
@@ -552,8 +552,8 @@ describe("Violations", () => {
 			);
 
 			for (let i = 0; i < result.violations.length - 1; i++) {
-				const current = new Date(result.violations[i].issuedAt);
-				const next = new Date(result.violations[i + 1].issuedAt);
+				const current = new Date(result.violations[i]!.issuedAt);
+				const next = new Date(result.violations[i + 1]!.issuedAt);
 				expect(current.getTime()).toBeGreaterThanOrEqual(next.getTime());
 			}
 		});
@@ -641,7 +641,7 @@ describe("Violations", () => {
 			});
 
 			expect(expiredViolation?.expiresAt).toBeDefined();
-			expect(new Date(expiredViolation!.expiresAt).getTime()).toBeLessThanOrEqual(Date.now());
+			expect(new Date(expiredViolation!.expiresAt!).getTime()).toBeLessThanOrEqual(Date.now());
 		});
 
 		it("should fail when violation does not exist", async () => {
@@ -735,7 +735,7 @@ describe("Violations", () => {
 			expect(result.success).toBe(true);
 			expect(result.violation.reviewOutcome).toBe(ReviewOutcome.REJECTED);
 			expect(result.violation.expiresAt).toBeDefined();
-			expect(new Date(result.violation.expiresAt).getTime()).toBeLessThanOrEqual(Date.now());
+			expect(new Date(result.violation.expiresAt!).getTime()).toBeLessThanOrEqual(Date.now());
 		});
 
 		it("should update to pending status", async () => {
@@ -907,8 +907,8 @@ describe("Violations", () => {
 			});
 
 			expect(otherGuildViolations.length).toBe(1);
-			expect(otherGuildViolations[0].expiresAt).toBeDefined();
-			expect(new Date(otherGuildViolations[0].expiresAt).getTime()).toBeGreaterThan(Date.now());
+			expect(otherGuildViolations[0]!.expiresAt).toBeDefined();
+			expect(new Date(otherGuildViolations[0]!.expiresAt!).getTime()).toBeGreaterThan(Date.now());
 		});
 	});
 
