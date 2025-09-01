@@ -183,7 +183,7 @@ export const updateViolationsSchema = createUpdateSchema(violationsTable);
 export type DbViolation = typeof violationsTable.$inferSelect;
 export type InsertDbViolation = typeof violationsTable.$inferInsert;
 
-export const violationsRelations = relations(violationsTable, ({ one, many }) => ({
+export const violationsRelations = relations(violationsTable, ({ one }) => ({
 	user: one(usersTable, {
 		fields: [violationsTable.userId],
 		references: [usersTable.id],

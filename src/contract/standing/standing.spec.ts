@@ -322,8 +322,9 @@ describe("Standing", () => {
 			);
 
 			expect(result.nextExpirationDate).toBeInstanceOf(Date);
+			if (!result.nextExpirationDate) throw new Error("nextExpirationDate is null");
 			// Should be approximately 10 days from now (the earliest expiration)
-			const daysDiff = Math.round((result.nextExpirationDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+			const daysDiff = Math.round((result.nextExpirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 			expect(daysDiff).toBeGreaterThanOrEqual(9);
 			expect(daysDiff).toBeLessThanOrEqual(11);
 		});
@@ -451,7 +452,7 @@ describe("Standing", () => {
 
 		it("should handle invalid JSON in restrictions gracefully", async () => {
 			// Create a violation with invalid JSON in restrictions
-			const [violation] = await db
+			const [_violation] = await db
 				.insert(violationsTable)
 				.values({
 					userId: testUser.id,
@@ -559,10 +560,22 @@ describe("Standing", () => {
 	});
 
 	describe("getBulkStandings", () => {
-		let users: Array<Omit<DbUser, "password">>;
+		let users: [
+			Omit<DbUser, "password">,
+			Omit<DbUser, "password">,
+			Omit<DbUser, "password">,
+			Omit<DbUser, "password">,
+			Omit<DbUser, "password">,
+		];
 
 		beforeEach(async () => {
-			users = [];
+			users = [] as unknown as [
+				Omit<DbUser, "password">,
+				Omit<DbUser, "password">,
+				Omit<DbUser, "password">,
+				Omit<DbUser, "password">,
+				Omit<DbUser, "password">,
+			];
 
 			// Create multiple users with different violation profiles
 			for (let i = 0; i < 5; i++) {
@@ -575,7 +588,7 @@ describe("Standing", () => {
 			await call(
 				issueViolation,
 				{
-					userId: users[1]!.id,
+					userId: users[1]?.id,
 					guildId: testGuildId,
 					type: ViolationType.SPAM,
 					severity: ViolationSeverity.LOW,
@@ -590,7 +603,7 @@ describe("Standing", () => {
 				await call(
 					issueViolation,
 					{
-						userId: users[2]!.id,
+						userId: users[2]?.id,
 						guildId: testGuildId,
 						type: ViolationType.TOXICITY,
 						severity: ViolationSeverity.MEDIUM,
@@ -605,7 +618,7 @@ describe("Standing", () => {
 			await call(
 				issueViolation,
 				{
-					userId: users[3]!.id,
+					userId: users[3]?.id,
 					guildId: testGuildId,
 					type: ViolationType.NSFW,
 					severity: ViolationSeverity.HIGH,
@@ -617,7 +630,7 @@ describe("Standing", () => {
 			await call(
 				issueViolation,
 				{
-					userId: users[3]!.id,
+					userId: users[3]?.id,
 					guildId: testGuildId,
 					type: ViolationType.TOXICITY,
 					severity: ViolationSeverity.MEDIUM,
@@ -631,7 +644,7 @@ describe("Standing", () => {
 			await call(
 				issueViolation,
 				{
-					userId: users[4]!.id,
+					userId: users[4]?.id,
 					guildId: testGuildId,
 					type: ViolationType.ILLEGAL,
 					severity: ViolationSeverity.CRITICAL,
@@ -659,11 +672,11 @@ describe("Standing", () => {
 			// Check each user's standing
 			const standingsMap = new Map(result.map((s) => [s.userId, s]));
 
-			expect(standingsMap.get(users[0]!.id)?.standing).toBe(AccountStanding.ALL_GOOD);
-			expect(standingsMap.get(users[1]!.id)?.standing).toBe(AccountStanding.LIMITED);
-			expect(standingsMap.get(users[2]!.id)?.standing).toBe(AccountStanding.VERY_LIMITED);
-			expect(standingsMap.get(users[3]!.id)?.standing).toBe(AccountStanding.AT_RISK);
-			expect(standingsMap.get(users[4]!.id)?.standing).toBe(AccountStanding.SUSPENDED);
+			expect(standingsMap.get(users[0]?.id)?.standing).toBe(AccountStanding.ALL_GOOD);
+			expect(standingsMap.get(users[1]?.id)?.standing).toBe(AccountStanding.LIMITED);
+			expect(standingsMap.get(users[2]?.id)?.standing).toBe(AccountStanding.VERY_LIMITED);
+			expect(standingsMap.get(users[3]?.id)?.standing).toBe(AccountStanding.AT_RISK);
+			expect(standingsMap.get(users[4]?.id)?.standing).toBe(AccountStanding.SUSPENDED);
 		});
 
 		it("should sort results by severity score", async () => {
@@ -680,7 +693,13 @@ describe("Standing", () => {
 
 			// Results should be sorted by severity score (highest first)
 			for (let i = 0; i < result.length - 1; i++) {
-				expect(result[i]!.severityScore).toBeGreaterThanOrEqual(result[i + 1]!.severityScore);
+				const currentItem = result[i];
+				const nextItem = result[i + 1];
+				if (!currentItem?.severityScore || !nextItem?.severityScore) {
+					throw new Error("Severity score is undefined");
+				}
+
+				expect(currentItem.severityScore).toBeGreaterThanOrEqual(nextItem.severityScore);
 			}
 		});
 
@@ -726,11 +745,11 @@ describe("Standing", () => {
 
 			const standingsMap = new Map(result.map((s) => [s.userId, s]));
 
-			expect(standingsMap.get(users[0]!.id)?.activeViolations).toBe(0);
-			expect(standingsMap.get(users[1]!.id)?.activeViolations).toBe(1);
-			expect(standingsMap.get(users[2]!.id)?.activeViolations).toBe(2);
-			expect(standingsMap.get(users[3]!.id)?.activeViolations).toBe(2);
-			expect(standingsMap.get(users[4]!.id)?.activeViolations).toBe(1);
+			expect(standingsMap.get(users[0]?.id)?.activeViolations).toBe(0);
+			expect(standingsMap.get(users[1]?.id)?.activeViolations).toBe(1);
+			expect(standingsMap.get(users[2]?.id)?.activeViolations).toBe(2);
+			expect(standingsMap.get(users[3]?.id)?.activeViolations).toBe(2);
+			expect(standingsMap.get(users[4]?.id)?.activeViolations).toBe(1);
 		});
 	});
 

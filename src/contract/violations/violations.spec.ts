@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type * as schema from "../../db/schema";
-import { type DbUser, type DbViolation, usersTable, violationsTable } from "../../db/schema";
+import { type DbUser, type DbViolation, violationsTable } from "../../db/schema";
 import {
 	AccountStanding,
 	FeatureRestriction,
@@ -84,7 +84,10 @@ describe("Violations", () => {
 				createTestContext(db, issuerUser),
 			);
 
-			const expiresAt = new Date(result.violation.expiresAt!);
+			if (!result.violation.expiresAt) {
+				throw new Error("Expected violation to have expiration date");
+			}
+			const expiresAt = new Date(result.violation.expiresAt);
 			const now = new Date();
 			const diffInDays = Math.round((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -106,7 +109,10 @@ describe("Violations", () => {
 				createTestContext(db, issuerUser),
 			);
 
-			const restrictions = JSON.parse(result.violation.restrictions!);
+			if (!result.violation.restrictions) {
+				throw new Error("Expected violation to have restrictions");
+			}
+			const restrictions = JSON.parse(result.violation.restrictions);
 			expect(restrictions).toContain(FeatureRestriction.MESSAGE_ATTACH);
 			expect(restrictions).toContain(FeatureRestriction.MESSAGE_EMBED);
 			expect(restrictions).toContain(FeatureRestriction.VOICE_VIDEO);
@@ -130,7 +136,10 @@ describe("Violations", () => {
 				createTestContext(db, issuerUser),
 			);
 
-			const restrictions = JSON.parse(result.violation.restrictions!);
+			if (!result.violation.restrictions) {
+				throw new Error("Expected violation to have restrictions");
+			}
+			const restrictions = JSON.parse(result.violation.restrictions);
 			expect(restrictions).toEqual(customRestrictions);
 		});
 
@@ -155,7 +164,10 @@ describe("Violations", () => {
 			expect(result.violation.policyViolated).toBe("Privacy Policy Section 3.2");
 			expect(result.violation.contentSnapshot).toBe("User shared: [redacted personal info]");
 			expect(result.violation.context).toBe("In #general channel during heated discussion");
-			expect(JSON.parse(result.violation.actionsApplied!)).toEqual(["message_deleted", "user_warned"]);
+			if (!result.violation.actionsApplied) {
+				throw new Error("Expected violation to have actionsApplied");
+			}
+			expect(JSON.parse(result.violation.actionsApplied)).toEqual(["message_deleted", "user_warned"]);
 		});
 
 		it("should calculate SUSPENDED standing for critical violations", async () => {
@@ -270,7 +282,10 @@ describe("Violations", () => {
 				createTestContext(db, issuerUser),
 			);
 
-			const restrictions = JSON.parse(result.violation.restrictions!);
+			if (!result.violation.restrictions) {
+				throw new Error("Expected violation to have restrictions");
+			}
+			const restrictions = JSON.parse(result.violation.restrictions);
 			expect(restrictions).toContain(FeatureRestriction.TIMEOUT);
 			expect(result.accountStanding).toBe(AccountStanding.SUSPENDED);
 		});
@@ -528,8 +543,13 @@ describe("Violations", () => {
 			);
 
 			for (let i = 0; i < result.violations.length - 1; i++) {
-				const current = new Date(result.violations[i]!.issuedAt);
-				const next = new Date(result.violations[i + 1]!.issuedAt);
+				const currentViolation = result.violations[i];
+				const nextViolation = result.violations[i + 1];
+				if (!currentViolation) throw new Error("Current violation is undefined");
+				if (!nextViolation) throw new Error("Next violation is undefined");
+				// Ensure current issuedAt is >= next issuedAt
+				const current = new Date(currentViolation.issuedAt);
+				const next = new Date(nextViolation.issuedAt);
 				expect(current.getTime()).toBeGreaterThanOrEqual(next.getTime());
 			}
 		});
@@ -609,7 +629,10 @@ describe("Violations", () => {
 			});
 
 			expect(expiredViolation?.expiresAt).toBeDefined();
-			expect(new Date(expiredViolation!.expiresAt!).getTime()).toBeLessThanOrEqual(Date.now());
+			if (!expiredViolation?.expiresAt) {
+				throw new Error("Expected violation to have expiration date");
+			}
+			expect(new Date(expiredViolation.expiresAt).getTime()).toBeLessThanOrEqual(Date.now());
 		});
 
 		it("should fail when violation does not exist", async () => {
@@ -703,7 +726,10 @@ describe("Violations", () => {
 			expect(result.success).toBe(true);
 			expect(result.violation.reviewOutcome).toBe(ReviewOutcome.REJECTED);
 			expect(result.violation.expiresAt).toBeDefined();
-			expect(new Date(result.violation.expiresAt!).getTime()).toBeLessThanOrEqual(Date.now());
+			if (!result.violation.expiresAt) {
+				throw new Error("Expected violation to have expiration date");
+			}
+			expect(new Date(result.violation.expiresAt).getTime()).toBeLessThanOrEqual(Date.now());
 		});
 
 		it("should update to pending status", async () => {
@@ -828,7 +854,7 @@ describe("Violations", () => {
 
 		it("should return zero when no violations to expire", async () => {
 			// Don't create any violations, just test on empty database
-			const freshGuildId = "fresh-guild-" + Date.now();
+			const freshGuildId = `fresh-guild-${Date.now()}`;
 
 			const result = await call(bulkExpireViolations, { guildId: freshGuildId }, createTestContext(db));
 
@@ -855,7 +881,7 @@ describe("Violations", () => {
 				createTestContext(db, issuerUser),
 			);
 
-			const result = await call(bulkExpireViolations, { guildId: testGuildId }, createTestContext(db));
+			const _result = await call(bulkExpireViolations, { guildId: testGuildId }, createTestContext(db));
 
 			// Should not affect other guild's violations
 			const otherGuildViolations = await db.query.violationsTable.findMany({
@@ -863,8 +889,11 @@ describe("Violations", () => {
 			});
 
 			expect(otherGuildViolations.length).toBe(1);
-			expect(otherGuildViolations[0]!.expiresAt).toBeDefined();
-			expect(new Date(otherGuildViolations[0]!.expiresAt!).getTime()).toBeGreaterThan(Date.now());
+			expect(otherGuildViolations[0]?.expiresAt).toBeDefined();
+			if (!otherGuildViolations[0]?.expiresAt) {
+				throw new Error("Expected violation to have expiration date");
+			}
+			expect(new Date(otherGuildViolations[0].expiresAt).getTime()).toBeGreaterThan(Date.now());
 		});
 	});
 

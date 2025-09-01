@@ -242,12 +242,13 @@ export const listSuspensions = base
 
 		if (input.activeOnly) {
 			conditions.push(isNull(suspensionsTable.liftedAt));
-			conditions.push(
-				or(
-					isNull(suspensionsTable.endsAt),
-					and(isNotNull(suspensionsTable.endsAt), gte(suspensionsTable.endsAt, new Date())),
-				)!,
+			const activeCondition = or(
+				isNull(suspensionsTable.endsAt),
+				and(isNotNull(suspensionsTable.endsAt), gte(suspensionsTable.endsAt, new Date())),
 			);
+			if (activeCondition) {
+				conditions.push(activeCondition);
+			}
 		}
 
 		const suspensions = await context.db.query.suspensionsTable.findMany({

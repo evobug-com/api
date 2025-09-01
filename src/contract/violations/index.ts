@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/client";
-import { and, eq, gte, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { and, eq, gte, isNull, lte, or } from "drizzle-orm";
 import { z } from "zod";
 import {
 	type DbViolation,
@@ -147,7 +147,10 @@ export const listViolations = base
 
 		if (!input.includeExpired) {
 			// Only include non-expired violations
-			conditions.push(or(isNull(violationsTable.expiresAt), gte(violationsTable.expiresAt, new Date()))!);
+			const notExpiredCondition = or(isNull(violationsTable.expiresAt), gte(violationsTable.expiresAt, new Date()));
+			if (notExpiredCondition) {
+				conditions.push(notExpiredCondition);
+			}
 		}
 
 		const violations = await context.db.query.violationsTable.findMany({

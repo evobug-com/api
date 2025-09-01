@@ -1,4 +1,3 @@
-import * as test from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import { pushSchema } from "drizzle-kit/api";
 import { sql } from "drizzle-orm";
@@ -12,7 +11,7 @@ const client = new PGlite();
 const testDb = drizzle({ client, schema });
 let created = false;
 
-export const createTestDatabase = async (shouldPushSchema = true) => {
+export const createTestDatabase = async (_shouldPushSchema = true) => {
 	if (!created) {
 		const { apply } = await pushSchema(schema, testDb as unknown as PgDatabase<any>);
 		await apply();

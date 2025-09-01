@@ -505,7 +505,13 @@ describe("Suspensions", () => {
 	describe("listSuspensions", () => {
 		beforeEach(async () => {
 			// Create multiple test users
-			const users = [];
+			const users = [] as unknown as [
+				Omit<DbUser, "password">,
+				Omit<DbUser, "password">,
+				Omit<DbUser, "password">,
+				Omit<DbUser, "password">,
+				Omit<DbUser, "password">,
+			];
 			for (let i = 0; i < 5; i++) {
 				const user = await call(createUser, { username: `listTestUser${i}` }, createTestContext(db));
 				users.push(user);
@@ -514,10 +520,12 @@ describe("Suspensions", () => {
 			// Create various suspensions
 			// Active suspensions
 			for (let i = 0; i < 3; i++) {
+				const user = users[i];
+				if (!user) throw new Error("User not found");
 				await call(
 					createSuspension,
 					{
-						userId: users[i]!.id,
+						userId: user.id,
 						guildId: testGuildId,
 						reason: `Active suspension ${i}`,
 						duration: 30,
@@ -528,10 +536,10 @@ describe("Suspensions", () => {
 			}
 
 			// Lifted suspension
-			const liftedResult = await call(
+			const _liftedResult = await call(
 				createSuspension,
 				{
-					userId: users[3]!.id,
+					userId: users[3]?.id,
 					guildId: testGuildId,
 					reason: "Lifted suspension",
 					issuedBy: issuerUser.id,
@@ -541,7 +549,7 @@ describe("Suspensions", () => {
 			await call(
 				liftSuspension,
 				{
-					userId: users[3]!.id,
+					userId: users[3]?.id,
 					guildId: testGuildId,
 					liftedBy: lifterUser.id,
 				},
@@ -552,7 +560,7 @@ describe("Suspensions", () => {
 			const expiredResult = await call(
 				createSuspension,
 				{
-					userId: users[4]!.id,
+					userId: users[4]?.id,
 					guildId: testGuildId,
 					reason: "Expired suspension",
 					duration: 1,
@@ -623,7 +631,7 @@ describe("Suspensions", () => {
 			);
 
 			expect(result.suspensions).toHaveLength(1);
-			expect(result.suspensions[0]!.userId).toBe(user.id);
+			expect(result.suspensions[0]?.userId).toBe(user.id);
 		});
 
 		it("should respect limit and offset", async () => {
@@ -651,8 +659,13 @@ describe("Suspensions", () => {
 			);
 
 			for (let i = 0; i < result.suspensions.length - 1; i++) {
-				const current = new Date(result.suspensions[i]!.startedAt);
-				const next = new Date(result.suspensions[i + 1]!.startedAt);
+				const suspension = result.suspensions[i];
+				if (!suspension) throw new Error("Suspension not found");
+				const nextSuspension = result.suspensions[i + 1];
+				if (!nextSuspension) throw new Error("Next suspension not found");
+				// Current should be newer than next
+				const current = new Date(suspension.startedAt);
+				const next = new Date(nextSuspension.startedAt);
 				expect(current.getTime()).toBeGreaterThanOrEqual(next.getTime());
 			}
 		});
@@ -691,9 +704,9 @@ describe("Suspensions", () => {
 				createTestContext(db),
 			);
 
-			expect(result.suspensions[0]!.user).toBeDefined();
-			expect(result.suspensions[0]!.issuer).toBeDefined();
-			expect(result.suspensions[0]!.lifter).toBeDefined();
+			expect(result.suspensions[0]?.user).toBeDefined();
+			expect(result.suspensions[0]?.issuer).toBeDefined();
+			expect(result.suspensions[0]?.lifter).toBeDefined();
 		});
 	});
 
@@ -847,8 +860,13 @@ describe("Suspensions", () => {
 
 			// Verify descending order
 			for (let i = 0; i < result.suspensions.length - 1; i++) {
-				const current = new Date(result.suspensions[i]!.startedAt);
-				const next = new Date(result.suspensions[i + 1]!.startedAt);
+				const suspension = result.suspensions[i];
+				if (!suspension) throw new Error("Suspension not found");
+				const nextSuspension = result.suspensions[i + 1];
+				if (!nextSuspension) throw new Error("Next suspension not found");
+
+				const current = new Date(suspension.startedAt);
+				const next = new Date(nextSuspension.startedAt);
 				expect(current.getTime()).toBeGreaterThanOrEqual(next.getTime());
 			}
 		});
@@ -951,7 +969,7 @@ describe("Suspensions", () => {
 				where: and(eq(suspensionsTable.guildId, testGuildId), eq(suspensionsTable.reason, "Active suspension 0")),
 			});
 
-			expect(activeSuspensions[0]!.liftedAt).toBeNull();
+			expect(activeSuspensions[0]?.liftedAt).toBeNull();
 		});
 
 		it("should not affect already lifted suspensions", async () => {
@@ -966,8 +984,17 @@ describe("Suspensions", () => {
 			});
 
 			// Should not change already lifted suspension
-			expect(afterLiftedSuspensions[0]!.liftReason).not.toBe("Suspension expired automatically");
-			expect(afterLiftedSuspensions[0]!.updatedAt.getTime()).toBe(beforeLiftedSuspensions[0]!.updatedAt.getTime());
+			expect(afterLiftedSuspensions[0]?.liftReason).not.toBe("Suspension expired automatically");
+
+			const afterUpdatedAt = afterLiftedSuspensions[0]?.updatedAt;
+			const beforeUpdatedAt = beforeLiftedSuspensions[0]?.updatedAt;
+
+			expect(afterUpdatedAt).toBeDefined();
+			expect(beforeUpdatedAt).toBeDefined();
+
+			if (afterUpdatedAt && beforeUpdatedAt) {
+				expect(afterUpdatedAt.getTime()).toBe(beforeUpdatedAt.getTime());
+			}
 		});
 
 		it("should only expire suspensions for specified guild", async () => {

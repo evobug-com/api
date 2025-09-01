@@ -4,7 +4,7 @@ import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type * as schema from "../../db/schema.ts";
-import { type DbUser, userStatsTable, usersTable } from "../../db/schema.ts";
+import { userStatsTable, usersTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser, updateUser } from "./index.ts";
 
@@ -163,7 +163,7 @@ describe("Users", () => {
 
 		it("should prevent duplicate usernames on update", async () => {
 			// Create first user
-			const user1 = await call(
+			const _user1 = await call(
 				createUser,
 				{
 					username: "firstuniqueuser",
@@ -341,18 +341,18 @@ describe("Users", () => {
 			const stats = await db.select().from(userStatsTable).where(eq(userStatsTable.userId, newUser.id)).limit(1);
 
 			expect(stats[0]).toBeDefined();
-			expect(stats[0]!.userId).toBe(newUser.id);
-			expect(stats[0]!.coinsCount).toBe(0);
-			expect(stats[0]!.xpCount).toBe(0);
-			expect(stats[0]!.dailyStreak).toBe(0);
-			expect(stats[0]!.maxDailyStreak).toBe(0);
-			expect(stats[0]!.workCount).toBe(0);
-			expect(stats[0]!.messagesCount).toBe(0);
-			expect(stats[0]!.boostCount).toBe(0);
-			expect(stats[0]!.lastDailyAt).toBeNull();
-			expect(stats[0]!.lastWorkAt).toBeNull();
-			expect(stats[0]!.lastMessageAt).toBeNull();
-			expect(stats[0]!.boostExpires).toBeNull();
+			expect(stats[0]?.userId).toBe(newUser.id);
+			expect(stats[0]?.coinsCount).toBe(0);
+			expect(stats[0]?.xpCount).toBe(0);
+			expect(stats[0]?.dailyStreak).toBe(0);
+			expect(stats[0]?.maxDailyStreak).toBe(0);
+			expect(stats[0]?.workCount).toBe(0);
+			expect(stats[0]?.messagesCount).toBe(0);
+			expect(stats[0]?.boostCount).toBe(0);
+			expect(stats[0]?.lastDailyAt).toBeNull();
+			expect(stats[0]?.lastWorkAt).toBeNull();
+			expect(stats[0]?.lastMessageAt).toBeNull();
+			expect(stats[0]?.boostExpires).toBeNull();
 		});
 	});
 
@@ -429,7 +429,7 @@ describe("Users", () => {
 
 			expect(users).toHaveLength(5);
 			for (let i = 0; i < 5; i++) {
-				expect(users[i]!.username).toBe(`concurrentuser${i}`);
+				expect(users[i]?.username).toBe(`concurrentuser${i}`);
 			}
 		});
 	});
@@ -543,10 +543,10 @@ describe("Users", () => {
 });
 
 describe("User retrieval functions", () => {
-	let db: NodePgDatabase<typeof schema>;
+	let _db: NodePgDatabase<typeof schema>;
 
 	beforeEach(async () => {
-		db = await createTestDatabase();
+		_db = await createTestDatabase();
 	});
 
 	// Add tests for any user retrieval functions if they exist
