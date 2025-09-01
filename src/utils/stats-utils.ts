@@ -93,7 +93,12 @@ export type RewardStats = {
  * @param {number} boostCount - Number of server boosts the user has
  * @returns {RewardStats} - Detailed reward breakdown
  */
-export function calculateRewards(type: string, level: number = 1, streak: number = 0, boostCount: number = 0): RewardStats {
+export function calculateRewards(
+	type: string,
+	level: number = 1,
+	streak: number = 0,
+	boostCount: number = 0,
+): RewardStats {
 	let baseCoins = 0;
 	let baseXp = 0;
 	let levelCoinsBonus = 0;
@@ -139,16 +144,16 @@ export function calculateRewards(type: string, level: number = 1, streak: number
 
 	// Calculate boost multiplier: 1.1x per boost (e.g., 10 boosts = 2x rewards)
 	// Formula: 1 + (boostCount * 0.1)
-	const boostMultiplier = 1 + (boostCount * 0.1);
-	
+	const boostMultiplier = 1 + boostCount * 0.1;
+
 	// Calculate base rewards before boost
 	const baseEarnedCoins = baseCoins + levelCoinsBonus + streakCoinsBonus + milestoneCoinsBonus;
 	const baseEarnedXp = baseXp + levelXpBonus + streakXpBonus + milestoneXpBonus;
-	
+
 	// Apply boost multiplier to get bonus amounts
 	const boostCoinsBonus = Math.floor(baseEarnedCoins * (boostMultiplier - 1));
 	const boostXpBonus = Math.floor(baseEarnedXp * (boostMultiplier - 1));
-	
+
 	// Calculate final totals with boost
 	const earnedTotalCoins = baseEarnedCoins + boostCoinsBonus;
 	const earnedTotalXp = baseEarnedXp + boostXpBonus;

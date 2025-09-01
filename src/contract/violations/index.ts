@@ -4,19 +4,19 @@ import { z } from "zod";
 import {
 	type DbViolation,
 	type InsertDbViolation,
+	usersTable,
 	violationsSchema,
 	violationsTable,
-	usersTable,
 } from "../../db/schema";
 import {
 	AccountStanding,
+	calculateAccountStanding,
 	FeatureRestriction,
+	getDefaultExpirationDays,
+	getDefaultRestrictions,
 	ReviewOutcome,
 	ViolationSeverity,
 	ViolationType,
-	calculateAccountStanding,
-	getDefaultExpirationDays,
-	getDefaultRestrictions,
 } from "../../utils/violation-utils";
 import { base } from "../shared/os";
 
@@ -147,12 +147,7 @@ export const listViolations = base
 
 		if (!input.includeExpired) {
 			// Only include non-expired violations
-			conditions.push(
-				or(
-					isNull(violationsTable.expiresAt),
-					gte(violationsTable.expiresAt, new Date())
-				)!
-			);
+			conditions.push(or(isNull(violationsTable.expiresAt), gte(violationsTable.expiresAt, new Date()))!);
 		}
 
 		const violations = await context.db.query.violationsTable.findMany({

@@ -1,28 +1,28 @@
 /**
  * Shared schemas for the moderation system
- * 
+ *
  * IMPORTANT: ID Types Documentation
  * =================================
- * 
+ *
  * userId (number) - Internal database ID from the users table
  *   - This is NOT the Discord or Guilded ID
  *   - This is an auto-incrementing integer primary key
  *   - Example: 123, 456, 789
- * 
+ *
  * discordId (string) - Discord's snowflake ID
  *   - This is stored in users.discordId column
  *   - Format: 17-19 digit string
  *   - Example: "123456789012345678"
- * 
+ *
  * guildedId (string) - Guilded's user ID
  *   - This is stored in users.guildedId column
  *   - Format: Alphanumeric string
  *   - Example: "EdV4eXpR"
- * 
+ *
  * guildId (string) - Server/Guild identifier
  *   - Represents the Discord/Guilded server
  *   - Example: "987654321098765432" (Discord) or "4Rqm1234" (Guilded)
- * 
+ *
  * To find a user by Discord/Guilded ID:
  * 1. First query the users table by discordId or guildedId
  * 2. Get the user.id (internal database ID)
@@ -30,20 +30,10 @@
  */
 
 import { z } from "zod";
-import { 
-	guildIdSchema, 
-	moderatorIdSchema, 
-	userIdSchema,
-	userLookupSchema 
-} from "../shared/schemas";
+import { guildIdSchema, moderatorIdSchema, userIdSchema, userLookupSchema } from "../shared/schemas";
 
 // Re-export shared schemas for convenience in moderation context
-export { 
-	guildIdSchema, 
-	moderatorIdSchema, 
-	userIdSchema,
-	userLookupSchema 
-};
+export { guildIdSchema, moderatorIdSchema, userIdSchema, userLookupSchema };
 
 /**
  * Violation input schemas
@@ -58,7 +48,12 @@ export const issueViolationInputSchema = z.object({
 	contentSnapshot: z.string().optional().describe("Snapshot of the violating content"),
 	context: z.string().optional().describe("Additional context about the violation"),
 	issuedBy: moderatorIdSchema.describe("Internal database ID of the moderator issuing the violation"),
-	expiresInDays: z.number().int().positive().optional().describe("Days until violation expires (default based on severity)"),
+	expiresInDays: z
+		.number()
+		.int()
+		.positive()
+		.optional()
+		.describe("Days until violation expires (default based on severity)"),
 	restrictions: z.array(z.string()).optional().describe("Feature restrictions to apply"),
 	actionsApplied: z.array(z.string()).optional().describe("Actions taken (e.g., message deleted, user timed out)"),
 });

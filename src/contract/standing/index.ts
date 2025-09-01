@@ -1,12 +1,12 @@
 import { ORPCError } from "@orpc/client";
-import { and, eq, isNull, or, gte } from "drizzle-orm";
+import { and, eq, gte, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { usersTable, violationsTable } from "../../db/schema";
 import {
 	AccountStanding,
-	FeatureRestriction,
 	calculateAccountStanding,
 	calculateSeverityScore,
+	FeatureRestriction,
 	getStandingDisplay,
 	isExpired,
 } from "../../utils/violation-utils";
@@ -51,10 +51,7 @@ export const getStanding = base
 
 		// Get all violations for the user in this guild
 		const allViolations = await context.db.query.violationsTable.findMany({
-			where: and(
-				eq(violationsTable.userId, input.userId),
-				eq(violationsTable.guildId, input.guildId),
-			),
+			where: and(eq(violationsTable.userId, input.userId), eq(violationsTable.guildId, input.guildId)),
 			orderBy: (violations, { desc }) => [desc(violations.issuedAt)],
 		});
 
@@ -129,10 +126,7 @@ export const calculateStanding = base
 			where: and(
 				eq(violationsTable.userId, input.userId),
 				eq(violationsTable.guildId, input.guildId),
-				or(
-					isNull(violationsTable.expiresAt),
-					gte(violationsTable.expiresAt, new Date()),
-				),
+				or(isNull(violationsTable.expiresAt), gte(violationsTable.expiresAt, new Date())),
 			),
 		});
 
@@ -171,10 +165,7 @@ export const getBulkStandings = base
 		for (const userId of input.userIds) {
 			// Get violations for each user
 			const violations = await context.db.query.violationsTable.findMany({
-				where: and(
-					eq(violationsTable.userId, userId),
-					eq(violationsTable.guildId, input.guildId),
-				),
+				where: and(eq(violationsTable.userId, userId), eq(violationsTable.guildId, input.guildId)),
 			});
 
 			const activeViolations = violations.filter((v) => !isExpired(v));
@@ -230,10 +221,7 @@ export const getUserRestrictions = base
 			where: and(
 				eq(violationsTable.userId, input.userId),
 				eq(violationsTable.guildId, input.guildId),
-				or(
-					isNull(violationsTable.expiresAt),
-					gte(violationsTable.expiresAt, new Date()),
-				),
+				or(isNull(violationsTable.expiresAt), gte(violationsTable.expiresAt, new Date())),
 			),
 		});
 
@@ -263,14 +251,16 @@ export const getUserRestrictions = base
 		const canPerform = {
 			sendMessages: !hasRestriction[FeatureRestriction.TIMEOUT],
 			sendEmbeds: !hasRestriction[FeatureRestriction.MESSAGE_EMBED] && !hasRestriction[FeatureRestriction.TIMEOUT],
-			sendAttachments: !hasRestriction[FeatureRestriction.MESSAGE_ATTACH] && !hasRestriction[FeatureRestriction.TIMEOUT],
+			sendAttachments:
+				!hasRestriction[FeatureRestriction.MESSAGE_ATTACH] && !hasRestriction[FeatureRestriction.TIMEOUT],
 			sendLinks: !hasRestriction[FeatureRestriction.MESSAGE_LINK] && !hasRestriction[FeatureRestriction.TIMEOUT],
 			useVoice: !hasRestriction[FeatureRestriction.VOICE_SPEAK] && !hasRestriction[FeatureRestriction.TIMEOUT],
 			useVideo: !hasRestriction[FeatureRestriction.VOICE_VIDEO] && !hasRestriction[FeatureRestriction.TIMEOUT],
 			stream: !hasRestriction[FeatureRestriction.VOICE_STREAM] && !hasRestriction[FeatureRestriction.TIMEOUT],
 			addReactions: !hasRestriction[FeatureRestriction.REACTION_ADD] && !hasRestriction[FeatureRestriction.TIMEOUT],
 			createThreads: !hasRestriction[FeatureRestriction.THREAD_CREATE] && !hasRestriction[FeatureRestriction.TIMEOUT],
-			changeNickname: !hasRestriction[FeatureRestriction.NICKNAME_CHANGE] && !hasRestriction[FeatureRestriction.TIMEOUT],
+			changeNickname:
+				!hasRestriction[FeatureRestriction.NICKNAME_CHANGE] && !hasRestriction[FeatureRestriction.TIMEOUT],
 		};
 
 		return {

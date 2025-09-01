@@ -246,9 +246,7 @@ export const userWorkCooldown = base
 		const now = new Date();
 		const cooldownEndTime = new Date(userStats.lastWorkAt.getTime() + 3600000); // 1 hour cooldown
 		const isOnCooldown = now < cooldownEndTime;
-		const cooldownRemaining = isOnCooldown
-			? Math.floor((cooldownEndTime.getTime() - now.getTime()) / 1000)
-			: 0;
+		const cooldownRemaining = isOnCooldown ? Math.floor((cooldownEndTime.getTime() - now.getTime()) / 1000) : 0;
 
 		// Get last work activity from log if needed
 		const lastWorkActivity = await context.db.query.userStatsLogTable.findFirst({

@@ -69,28 +69,18 @@ export const discordIdSchema = z
  * Schema for Guilded user ID
  * @example "EdV4eXpR" (Guilded's ID format)
  */
-export const guildedIdSchema = z
-	.string()
-	.min(1)
-	.brand<"GuildedId">()
-	.describe("Guilded user ID");
+export const guildedIdSchema = z.string().min(1).brand<"GuildedId">().describe("Guilded user ID");
 
 /**
  * Schema for server/guild ID
  * @example "987654321098765432" (Discord) or "4Rqm1234" (Guilded)
  */
-export const guildIdSchema = z
-	.string()
-	.min(1)
-	.brand<"GuildId">()
-	.describe("Discord/Guilded server ID");
+export const guildIdSchema = z.string().min(1).brand<"GuildId">().describe("Discord/Guilded server ID");
 
 /**
  * Schema for moderator ID (same as user ID but with semantic meaning)
  */
-export const moderatorIdSchema = userIdSchema
-	.brand<"ModeratorId">()
-	.describe("Internal database ID of the moderator");
+export const moderatorIdSchema = userIdSchema.brand<"ModeratorId">().describe("Internal database ID of the moderator");
 
 // Helper functions for type conversions
 

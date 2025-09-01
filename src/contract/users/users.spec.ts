@@ -1,10 +1,10 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type * as schema from "../../db/schema.ts";
 import { type DbUser, userStatsTable, usersTable } from "../../db/schema.ts";
-import * as schema from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser, updateUser } from "./index.ts";
 
@@ -84,7 +84,7 @@ describe("Users", () => {
 						username: "duplicateuser",
 					},
 					createTestContext(db),
-				)
+				),
 			).rejects.toThrow(
 				new ORPCError("NOT_ACCEPTABLE", {
 					message: "User with provided details already exists",
@@ -339,7 +339,7 @@ describe("Users", () => {
 			);
 
 			const stats = await db.select().from(userStatsTable).where(eq(userStatsTable.userId, newUser.id)).limit(1);
-			
+
 			expect(stats[0]).toBeDefined();
 			expect(stats[0]!.userId).toBe(newUser.id);
 			expect(stats[0]!.coinsCount).toBe(0);
@@ -368,13 +368,13 @@ describe("Users", () => {
 				},
 				createTestContext(db),
 			);
-			
+
 			expect(user.username).toBe(null);
 		});
 
 		it("should handle very long username", async () => {
 			const longUsername = "a".repeat(51); // Assuming 50 char limit
-			
+
 			await expect(
 				call(
 					createUser,
@@ -412,7 +412,7 @@ describe("Users", () => {
 
 		it("should handle concurrent user creation", async () => {
 			const promises = [];
-			
+
 			for (let i = 0; i < 5; i++) {
 				promises.push(
 					call(
@@ -426,7 +426,7 @@ describe("Users", () => {
 			}
 
 			const users = await Promise.all(promises);
-			
+
 			expect(users).toHaveLength(5);
 			for (let i = 0; i < 5; i++) {
 				expect(users[i]!.username).toBe(`concurrentuser${i}`);
@@ -500,7 +500,7 @@ describe("Users", () => {
 			const originalUpdatedAt = testUser.updatedAt;
 
 			// Wait a bit to ensure different timestamps
-			await new Promise(resolve => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 100));
 
 			const result = await call(
 				updateUser,
@@ -527,22 +527,16 @@ describe("Users", () => {
 			);
 
 			// Verify stats were created
-			const statsBefore = await db
-				.select()
-				.from(userStatsTable)
-				.where(eq(userStatsTable.userId, testUser.id));
-			
+			const statsBefore = await db.select().from(userStatsTable).where(eq(userStatsTable.userId, testUser.id));
+
 			expect(statsBefore).toHaveLength(1);
 
 			// Delete user (should cascade to stats due to foreign key)
 			await db.delete(usersTable).where(eq(usersTable.id, testUser.id));
 
 			// Verify stats were deleted
-			const statsAfter = await db
-				.select()
-				.from(userStatsTable)
-				.where(eq(userStatsTable.userId, testUser.id));
-			
+			const statsAfter = await db.select().from(userStatsTable).where(eq(userStatsTable.userId, testUser.id));
+
 			expect(statsAfter).toHaveLength(0);
 		});
 	});

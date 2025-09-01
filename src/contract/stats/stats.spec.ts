@@ -132,10 +132,10 @@ describe("Stats", async () => {
 			expect(async () => {
 				await call(
 					claimDaily,
-				{
-					userId: testUser.id,
-					boostCount: 0,
-				},
+					{
+						userId: testUser.id,
+						boostCount: 0,
+					},
 					createTestContext(db, testUser),
 				);
 			}).toThrow(new ORPCError("NOT_ACCEPTABLE", { message: "Daily reward already claimed today" }));
@@ -283,10 +283,10 @@ describe("Stats", async () => {
 			expect(async () => {
 				await call(
 					claimDaily,
-				{
-					userId: 999999,
-					boostCount: 0,
-				},
+					{
+						userId: 999999,
+						boostCount: 0,
+					},
 					createTestContext(db, testUser),
 				);
 			}).toThrow(new ORPCError("NOT_FOUND", { message: "User not found" }));
@@ -312,15 +312,17 @@ describe("Stats", async () => {
 			twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 			twoDaysAgo.setHours(12, 0, 0, 0);
 
-			await db.insert(userStatsLogTable).values([{
-				userId: userForStreakReset.id,
-				activityType: "daily",
-				notes: "Daily reward claimed. Streak: 3",
-				xpEarned: 50,
-				coinsEarned: 25,
-				createdAt: twoDaysAgo,
-				updatedAt: twoDaysAgo,
-			}]);
+			await db.insert(userStatsLogTable).values([
+				{
+					userId: userForStreakReset.id,
+					activityType: "daily",
+					notes: "Daily reward claimed. Streak: 3",
+					xpEarned: 50,
+					coinsEarned: 25,
+					createdAt: twoDaysAgo,
+					updatedAt: twoDaysAgo,
+				},
+			]);
 
 			// Claim daily today (should reset streak to 1)
 			const result = await call(
@@ -351,10 +353,10 @@ describe("Stats", async () => {
 			expect(async () => {
 				await call(
 					claimDaily,
-				{
-					userId: userWithoutStats.id,
-					boostCount: 0,
-				},
+					{
+						userId: userWithoutStats.id,
+						boostCount: 0,
+					},
 					createTestContext(db, userWithoutStats),
 				);
 			}).toThrow(new ORPCError("NOT_FOUND", { message: "User stats not found" }));
@@ -377,11 +379,14 @@ describe("Stats", async () => {
 
 			// Attempt to claim daily (should fail)
 			try {
-				await call(claimDaily,
-				{
-					userId: userForTransactionDaily.id,
-					boostCount: 0,
-				}, createTestContext(db, userForTransactionDaily));
+				await call(
+					claimDaily,
+					{
+						userId: userForTransactionDaily.id,
+						boostCount: 0,
+					},
+					createTestContext(db, userForTransactionDaily),
+				);
 			} catch {
 				// Expected to fail
 			}
@@ -417,15 +422,17 @@ describe("Stats", async () => {
 			yesterday.setDate(yesterday.getDate() - 1);
 			yesterday.setHours(12, 0, 0, 0);
 
-			await db.insert(userStatsLogTable).values([{
-				userId: userFor10thStreak.id,
-				activityType: "daily",
-				notes: "Daily reward claimed. Streak: 9",
-				xpEarned: 50,
-				coinsEarned: 25,
-				createdAt: yesterday,
-				updatedAt: yesterday,
-			}]);
+			await db.insert(userStatsLogTable).values([
+				{
+					userId: userFor10thStreak.id,
+					activityType: "daily",
+					notes: "Daily reward claimed. Streak: 9",
+					xpEarned: 50,
+					coinsEarned: 25,
+					createdAt: yesterday,
+					updatedAt: yesterday,
+				},
+			]);
 
 			// Claim for 10th day
 			const result = await call(
@@ -514,7 +521,7 @@ describe("Stats", async () => {
 
 			expect(cooldownResult.isOnCooldown).toBe(true);
 			expect(cooldownResult.cooldownEndTime).toBeDefined();
-			
+
 			if (cooldownResult.cooldownEndTime) {
 				// Should be tomorrow at midnight
 				const expectedMidnight = new Date(beforeClaim);
@@ -611,10 +618,10 @@ describe("Stats", async () => {
 			expect(async () => {
 				await call(
 					claimWork,
-				{
-					userId: userForCooldown.id,
-					boostCount: 0,
-				},
+					{
+						userId: userForCooldown.id,
+						boostCount: 0,
+					},
 					createTestContext(db, userForCooldown),
 				);
 			}).toThrow(ORPCError);
@@ -752,10 +759,10 @@ describe("Stats", async () => {
 			expect(async () => {
 				await call(
 					claimWork,
-				{
-					userId: userWithoutStats.id,
-					boostCount: 0,
-				},
+					{
+						userId: userWithoutStats.id,
+						boostCount: 0,
+					},
 					createTestContext(db, userWithoutStats),
 				);
 			}).toThrow(new ORPCError("NOT_FOUND", { message: "User stats not found" }));
@@ -783,7 +790,7 @@ describe("Stats", async () => {
 
 			// statsLog.createdAt should be the current time, not the cooldown end time
 			const logCreatedAt = result.statsLog.createdAt;
-			
+
 			// The log should have been created between beforeClaim and afterClaim
 			expect(logCreatedAt.getTime()).toBeGreaterThanOrEqual(beforeClaim.getTime());
 			expect(logCreatedAt.getTime()).toBeLessThanOrEqual(afterClaim.getTime());
@@ -838,11 +845,14 @@ describe("Stats", async () => {
 
 			// Attempt to claim work (should fail)
 			try {
-				await call(claimWork,
-				{
-					userId: userForTransaction.id,
-					boostCount: 0,
-				}, createTestContext(db, userForTransaction));
+				await call(
+					claimWork,
+					{
+						userId: userForTransaction.id,
+						boostCount: 0,
+					},
+					createTestContext(db, userForTransaction),
+				);
 			} catch {
 				// Expected to fail
 			}
@@ -1080,15 +1090,17 @@ describe("Stats", async () => {
 			// Insert recent non-work activity (daily claim) - this shouldn't affect work cooldown
 			const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
-			await db.insert(userStatsLogTable).values([{
-				userId: userForNonWork.id,
-				activityType: "daily",
-				notes: "Daily claim activity",
-				xpEarned: 100,
-				coinsEarned: 50,
-				createdAt: tenMinutesAgo,
-				updatedAt: tenMinutesAgo,
-			}]);
+			await db.insert(userStatsLogTable).values([
+				{
+					userId: userForNonWork.id,
+					activityType: "daily",
+					notes: "Daily claim activity",
+					xpEarned: 100,
+					coinsEarned: 50,
+					createdAt: tenMinutesAgo,
+					updatedAt: tenMinutesAgo,
+				},
+			]);
 
 			// userWorkCooldown checks userStatsTable.lastWorkAt, not the log table
 			// Since no work has been done, lastWorkAt is null and there's no cooldown

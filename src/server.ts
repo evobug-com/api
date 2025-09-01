@@ -1,21 +1,21 @@
-import { RPCHandler } from '@orpc/server/fetch'
-import { CORSPlugin } from '@orpc/server/plugins'
+import { RPCHandler } from "@orpc/server/fetch";
+import { CORSPlugin } from "@orpc/server/plugins";
 import { router } from "./contract/router.ts";
 import "dotenv/config";
-import {drizzle, type NodePgClient} from "drizzle-orm/node-postgres";
+import type { IncomingHttpHeaders } from "node:http";
+import { drizzle, type NodePgClient } from "drizzle-orm/node-postgres";
 import { createTestDatabase } from "./contract/shared/test-utils.ts";
 import type { DbUser } from "./db/schema.ts";
 import * as schema from "./db/schema.ts";
-import type {IncomingHttpHeaders} from "node:http";
 
 if (process.env.DATABASE_URL === undefined)
 	throw new Error("DATABASE_URL environment variable is not set. Please set it to your database URL.");
 
 const pool = new Bun.SQL(process.env.DATABASE_URL, {
-    max: 20, // Maximum 20 concurrent connections
-    idleTimeout: 30, // Close idle connections after 30s
-    maxLifetime: 3600, // Max connection lifetime 1 hour
-    connectionTimeout: 10, // Connection timeout 10s
+	max: 20, // Maximum 20 concurrent connections
+	idleTimeout: 30, // Close idle connections after 30s
+	maxLifetime: 3600, // Max connection lifetime 1 hour
+	connectionTimeout: 10, // Connection timeout 10s
 });
 
 const db = process.env.USE_TEMP_DATABASE
@@ -32,20 +32,20 @@ const handler = new RPCHandler(router, {
 });
 
 const server = Bun.serve({
-    port: 3001,
-    async fetch(request: Request) {
-        const { matched, response } = await handler.handle(request, {
-            prefix: '/rpc',
-            context: { headers: request.headers as unknown as IncomingHttpHeaders, db, user: null as unknown as DbUser }
-        })
+	port: 3001,
+	async fetch(request: Request) {
+		const { matched, response } = await handler.handle(request, {
+			prefix: "/rpc",
+			context: { headers: request.headers as unknown as IncomingHttpHeaders, db, user: null as unknown as DbUser },
+		});
 
-        if (matched) {
-            return response
-        }
+		if (matched) {
+			return response;
+		}
 
-        return new Response('Not found', { status: 404 })
-    },
-})
+		return new Response("Not found", { status: 404 });
+	},
+});
 
 console.log(`🚀 Server running at http://${server.hostname}:${server.port}/rpc`);
 

@@ -1,31 +1,26 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type * as schema from "../../db/schema";
+import { type DbUser, type DbViolation, usersTable, violationsTable } from "../../db/schema";
 import {
-	type DbUser,
-	type DbViolation,
-	usersTable,
-	violationsTable,
-} from "../../db/schema";
-import * as schema from "../../db/schema";
-import {
-	ViolationType,
-	ViolationSeverity,
 	AccountStanding,
 	FeatureRestriction,
 	ReviewOutcome,
+	ViolationSeverity,
+	ViolationType,
 } from "../../utils/violation-utils";
 import { createTestContext, createTestDatabase } from "../shared/test-utils";
 import { createUser } from "../users";
 import {
+	bulkExpireViolations,
+	expireViolation,
+	getViolation,
 	issueViolation,
 	listViolations,
-	getViolation,
-	expireViolation,
 	updateViolationReview,
-	bulkExpireViolations,
 } from "./index";
 
 describe("Violations", () => {
@@ -37,25 +32,13 @@ describe("Violations", () => {
 
 	beforeEach(async () => {
 		db = await createTestDatabase();
-		
+
 		// Create test users
-		testUser = await call(
-			createUser,
-			{ username: "violationTestUser" },
-			createTestContext(db),
-		);
-		
-		issuerUser = await call(
-			createUser,
-			{ username: "issuerUser" },
-			createTestContext(db),
-		);
-		
-		reviewerUser = await call(
-			createUser,
-			{ username: "reviewerUser" },
-			createTestContext(db),
-		);
+		testUser = await call(createUser, { username: "violationTestUser" }, createTestContext(db));
+
+		issuerUser = await call(createUser, { username: "issuerUser" }, createTestContext(db));
+
+		reviewerUser = await call(createUser, { username: "reviewerUser" }, createTestContext(db));
 	});
 
 	describe("issueViolation", () => {
@@ -104,7 +87,7 @@ describe("Violations", () => {
 			const expiresAt = new Date(result.violation.expiresAt!);
 			const now = new Date();
 			const diffInDays = Math.round((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-			
+
 			expect(diffInDays).toBeGreaterThanOrEqual(customDays - 1);
 			expect(diffInDays).toBeLessThanOrEqual(customDays + 1);
 		});
@@ -131,10 +114,7 @@ describe("Violations", () => {
 		});
 
 		it("should include custom restrictions when provided", async () => {
-			const customRestrictions = [
-				FeatureRestriction.VOICE_SPEAK,
-				FeatureRestriction.THREAD_CREATE,
-			];
+			const customRestrictions = [FeatureRestriction.VOICE_SPEAK, FeatureRestriction.THREAD_CREATE];
 
 			const result = await call(
 				issueViolation,
@@ -457,11 +437,7 @@ describe("Violations", () => {
 			);
 
 			// Create violation for another user
-			const otherUser = await call(
-				createUser,
-				{ username: "otherViolationUser" },
-				createTestContext(db),
-			);
+			const otherUser = await call(createUser, { username: "otherViolationUser" }, createTestContext(db));
 
 			await call(
 				issueViolation,
@@ -538,7 +514,7 @@ describe("Violations", () => {
 					createTestContext(db, issuerUser),
 				);
 				// Small delay to ensure different timestamps
-				await new Promise(resolve => setTimeout(resolve, 10));
+				await new Promise((resolve) => setTimeout(resolve, 10));
 			}
 
 			const result = await call(
@@ -579,11 +555,7 @@ describe("Violations", () => {
 		});
 
 		it("should retrieve a specific violation by ID", async () => {
-			const result = await call(
-				getViolation,
-				{ violationId: violation.id },
-				createTestContext(db),
-			);
+			const result = await call(getViolation, { violationId: violation.id }, createTestContext(db));
 
 			expect(result.id).toBe(violation.id);
 			expect(result.userId).toBe(testUser.id);
@@ -592,13 +564,9 @@ describe("Violations", () => {
 		});
 
 		it("should fail when violation does not exist", async () => {
-			await expect(
-				call(
-					getViolation,
-					{ violationId: 999999 },
-					createTestContext(db),
-				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Violation not found" }));
+			await expect(call(getViolation, { violationId: 999999 }, createTestContext(db))).rejects.toThrow(
+				new ORPCError("NOT_FOUND", { message: "Violation not found" }),
+			);
 		});
 	});
 
@@ -817,11 +785,7 @@ describe("Violations", () => {
 				);
 			}
 
-			const result = await call(
-				bulkExpireViolations,
-				{ guildId: testGuildId },
-				createTestContext(db),
-			);
+			const result = await call(bulkExpireViolations, { guildId: testGuildId }, createTestContext(db));
 
 			expect(result.success).toBe(true);
 			expect(result.expiredCount).toBe(3);
@@ -865,12 +829,8 @@ describe("Violations", () => {
 		it("should return zero when no violations to expire", async () => {
 			// Don't create any violations, just test on empty database
 			const freshGuildId = "fresh-guild-" + Date.now();
-			
-			const result = await call(
-				bulkExpireViolations,
-				{ guildId: freshGuildId },
-				createTestContext(db),
-			);
+
+			const result = await call(bulkExpireViolations, { guildId: freshGuildId }, createTestContext(db));
 
 			expect(result.success).toBe(true);
 			expect(result.expiredCount).toBe(0);
@@ -895,11 +855,7 @@ describe("Violations", () => {
 				createTestContext(db, issuerUser),
 			);
 
-			const result = await call(
-				bulkExpireViolations,
-				{ guildId: testGuildId },
-				createTestContext(db),
-			);
+			const result = await call(bulkExpireViolations, { guildId: testGuildId }, createTestContext(db));
 
 			// Should not affect other guild's violations
 			const otherGuildViolations = await db.query.violationsTable.findMany({
@@ -966,7 +922,7 @@ describe("Violations", () => {
 
 		it("should handle very long reason text", async () => {
 			const longReason = "a".repeat(1001);
-			
+
 			await expect(
 				call(
 					issueViolation,

@@ -4,23 +4,12 @@
  * Each domain is properly separated by concern
  */
 
+// Standing Management
+import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions } from "./standing";
 // Authentication & Session Management
 // import { createSession, deleteSession } from "./auth";
 // Stats & Rewards System
 import { claimDaily, claimWork, leaderboard, userDailyCooldown, userStats, userWorkCooldown } from "./stats";
-// User Management
-import { createUser, getUser, updateUser } from "./users";
-// Violations System
-import {
-	bulkExpireViolations,
-	expireViolation,
-	getViolation,
-	issueViolation,
-	listViolations,
-	updateViolationReview,
-} from "./violations";
-// Standing Management
-import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions } from "./standing";
 // Review System (temporarily disabled - reviews are now part of violations table)
 // import { cancelReview, getReviewStatus, listReviews, processReview, requestReview } from "./violation-reviews";
 // Suspension Management
@@ -32,6 +21,17 @@ import {
 	liftSuspension,
 	listSuspensions,
 } from "./suspensions";
+// User Management
+import { createUser, getUser, updateUser } from "./users";
+// Violations System
+import {
+	bulkExpireViolations,
+	expireViolation,
+	getViolation,
+	issueViolation,
+	listViolations,
+	updateViolationReview,
+} from "./violations";
 
 export const router = {
 	// Authentication endpoints
@@ -162,42 +162,42 @@ export const router = {
 	// },
 	//
 	moderation: {
-        violations: {
-            issue: issueViolation, // POST /violations/issue
-            list: listViolations, // GET /violations/list
-            get: getViolation, // GET /violations/{id}
-            expire: expireViolation, // PUT /violations/{id}/expire
-            updateReview: updateViolationReview, // PUT /violations/{id}/review
-            bulkExpire: bulkExpireViolations, // PUT /violations/bulk-expire
-        },
+		violations: {
+			issue: issueViolation, // POST /violations/issue
+			list: listViolations, // GET /violations/list
+			get: getViolation, // GET /violations/{id}
+			expire: expireViolation, // PUT /violations/{id}/expire
+			updateReview: updateViolationReview, // PUT /violations/{id}/review
+			bulkExpire: bulkExpireViolations, // PUT /violations/bulk-expire
+		},
 
-        // Account Standing endpoints
-        standing: {
-            get: getStanding, // GET /standing/{userId}
-            calculate: calculateStanding, // POST /standing/calculate
-            bulk: getBulkStandings, // GET /standing/bulk
-            restrictions: getUserRestrictions, // GET /standing/{userId}/restrictions
-        },
+		// Account Standing endpoints
+		standing: {
+			get: getStanding, // GET /standing/{userId}
+			calculate: calculateStanding, // POST /standing/calculate
+			bulk: getBulkStandings, // GET /standing/bulk
+			restrictions: getUserRestrictions, // GET /standing/{userId}/restrictions
+		},
 
-        // Violation Review endpoints (temporarily disabled - reviews are now part of violations table)
-        // reviews: {
-        //     request: requestReview, // POST /reviews/request
-        //     list: listReviews, // GET /reviews/list
-        //     process: processReview, // PUT /reviews/{id}/process
-        //     status: getReviewStatus, // GET /reviews/{violationId}/status
-        //     cancel: cancelReview, // DELETE /reviews/{id}
-        // },
+		// Violation Review endpoints (temporarily disabled - reviews are now part of violations table)
+		// reviews: {
+		//     request: requestReview, // POST /reviews/request
+		//     list: listReviews, // GET /reviews/list
+		//     process: processReview, // PUT /reviews/{id}/process
+		//     status: getReviewStatus, // GET /reviews/{violationId}/status
+		//     cancel: cancelReview, // DELETE /reviews/{id}
+		// },
 
-        // Suspension Management endpoints
-        suspensions: {
-            create: createSuspension, // POST /suspensions/create
-            lift: liftSuspension, // PUT /suspensions/lift
-            check: checkSuspension, // GET /suspensions/check
-            list: listSuspensions, // GET /suspensions/list
-            history: getSuspensionHistory, // GET /suspensions/{userId}/history
-            autoExpire: autoExpireSuspensions, // PUT /suspensions/auto-expire
-        },
-    }
+		// Suspension Management endpoints
+		suspensions: {
+			create: createSuspension, // POST /suspensions/create
+			lift: liftSuspension, // PUT /suspensions/lift
+			check: checkSuspension, // GET /suspensions/check
+			list: listSuspensions, // GET /suspensions/list
+			history: getSuspensionHistory, // GET /suspensions/{userId}/history
+			autoExpire: autoExpireSuspensions, // PUT /suspensions/auto-expire
+		},
+	},
 
 	//
 	// // Message logging endpoints

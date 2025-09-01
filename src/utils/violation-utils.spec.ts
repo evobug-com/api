@@ -1,16 +1,16 @@
 import { describe, expect, it } from "bun:test";
 import type { DbViolation } from "../db/schema";
 import {
-	ViolationType,
-	ViolationSeverity,
 	AccountStanding,
-	FeatureRestriction,
-	calculateSeverityScore,
 	calculateAccountStanding,
-	isExpired,
+	calculateSeverityScore,
+	FeatureRestriction,
 	getDefaultExpirationDays,
 	getDefaultRestrictions,
 	getStandingDisplay,
+	isExpired,
+	ViolationSeverity,
+	ViolationType,
 } from "./violation-utils";
 
 describe("violation-utils", () => {
@@ -21,89 +21,105 @@ describe("violation-utils", () => {
 		});
 
 		it("should calculate correct score for LOW severity", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.SPAM,
-				severity: ViolationSeverity.LOW,
-				expiresAt: new Date(Date.now() + 86400000), // Not expired
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.SPAM,
+					severity: ViolationSeverity.LOW,
+					expiresAt: new Date(Date.now() + 86400000), // Not expired
+				},
+			];
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(10);
 		});
 
 		it("should calculate correct score for MEDIUM severity", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.TOXICITY,
-				severity: ViolationSeverity.MEDIUM,
-				expiresAt: new Date(Date.now() + 86400000),
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.TOXICITY,
+					severity: ViolationSeverity.MEDIUM,
+					expiresAt: new Date(Date.now() + 86400000),
+				},
+			];
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(25);
 		});
 
 		it("should calculate correct score for HIGH severity", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.NSFW,
-				severity: ViolationSeverity.HIGH,
-				expiresAt: new Date(Date.now() + 86400000),
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.NSFW,
+					severity: ViolationSeverity.HIGH,
+					expiresAt: new Date(Date.now() + 86400000),
+				},
+			];
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(50);
 		});
 
 		it("should calculate correct score for CRITICAL severity", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.ILLEGAL,
-				severity: ViolationSeverity.CRITICAL,
-				expiresAt: new Date(Date.now() + 86400000),
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.ILLEGAL,
+					severity: ViolationSeverity.CRITICAL,
+					expiresAt: new Date(Date.now() + 86400000),
+				},
+			];
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(150); // 100 * 1.5 for ILLEGAL type
 		});
 
 		it("should apply 1.5x multiplier for PRIVACY violations", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.PRIVACY,
-				severity: ViolationSeverity.MEDIUM,
-				expiresAt: new Date(Date.now() + 86400000),
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.PRIVACY,
+					severity: ViolationSeverity.MEDIUM,
+					expiresAt: new Date(Date.now() + 86400000),
+				},
+			];
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(38); // Math.round(25 * 1.5)
 		});
 
 		it("should apply 1.5x multiplier for ILLEGAL violations", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.ILLEGAL,
-				severity: ViolationSeverity.HIGH,
-				expiresAt: new Date(Date.now() + 86400000),
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.ILLEGAL,
+					severity: ViolationSeverity.HIGH,
+					expiresAt: new Date(Date.now() + 86400000),
+				},
+			];
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(75); // 50 * 1.5
 		});
 
 		it("should apply 1.5x multiplier for SELF_HARM violations", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.SELF_HARM,
-				severity: ViolationSeverity.MEDIUM,
-				expiresAt: new Date(Date.now() + 86400000),
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.SELF_HARM,
+					severity: ViolationSeverity.MEDIUM,
+					expiresAt: new Date(Date.now() + 86400000),
+				},
+			];
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(38); // Math.round(25 * 1.5)
 		});
 
 		it("should apply 2x multiplier for EVASION violations", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.EVASION,
-				severity: ViolationSeverity.HIGH,
-				expiresAt: new Date(Date.now() + 86400000),
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.EVASION,
+					severity: ViolationSeverity.HIGH,
+					expiresAt: new Date(Date.now() + 86400000),
+				},
+			];
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(100); // 50 * 2
 		});
@@ -121,7 +137,7 @@ describe("violation-utils", () => {
 					expiresAt: new Date(Date.now() + 86400000), // Not expired
 				},
 			];
-			
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(25); // Only count the non-expired violation
 		});
@@ -144,18 +160,20 @@ describe("violation-utils", () => {
 					expiresAt: new Date(Date.now() + 86400000),
 				},
 			];
-			
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(85); // 10 + 25 + 50
 		});
 
 		it("should handle violations with null expiresAt", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.SPAM,
-				severity: ViolationSeverity.LOW,
-				expiresAt: null, // Never expires
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.SPAM,
+					severity: ViolationSeverity.LOW,
+					expiresAt: null, // Never expires
+				},
+			];
+
 			const score = calculateSeverityScore(violations as DbViolation[]);
 			expect(score).toBe(10); // Should count as active
 		});
@@ -168,12 +186,14 @@ describe("violation-utils", () => {
 		});
 
 		it("should return LIMITED for low severity score", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.SPAM,
-				severity: ViolationSeverity.LOW,
-				expiresAt: new Date(Date.now() + 86400000),
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.SPAM,
+					severity: ViolationSeverity.LOW,
+					expiresAt: new Date(Date.now() + 86400000),
+				},
+			];
+
 			const standing = calculateAccountStanding(violations as DbViolation[]);
 			expect(standing).toBe(AccountStanding.LIMITED);
 		});
@@ -191,7 +211,7 @@ describe("violation-utils", () => {
 					expiresAt: new Date(Date.now() + 86400000),
 				},
 			];
-			
+
 			const standing = calculateAccountStanding(violations as DbViolation[]);
 			expect(standing).toBe(AccountStanding.VERY_LIMITED);
 		});
@@ -209,18 +229,20 @@ describe("violation-utils", () => {
 					expiresAt: new Date(Date.now() + 86400000),
 				},
 			];
-			
+
 			const standing = calculateAccountStanding(violations as DbViolation[]);
 			expect(standing).toBe(AccountStanding.AT_RISK);
 		});
 
 		it("should return SUSPENDED for critical violation", () => {
-			const violations: Partial<DbViolation>[] = [{
-				type: ViolationType.ILLEGAL,
-				severity: ViolationSeverity.CRITICAL,
-				expiresAt: new Date(Date.now() + 86400000),
-			}];
-			
+			const violations: Partial<DbViolation>[] = [
+				{
+					type: ViolationType.ILLEGAL,
+					severity: ViolationSeverity.CRITICAL,
+					expiresAt: new Date(Date.now() + 86400000),
+				},
+			];
+
 			const standing = calculateAccountStanding(violations as DbViolation[]);
 			expect(standing).toBe(AccountStanding.SUSPENDED);
 		});
@@ -233,7 +255,7 @@ describe("violation-utils", () => {
 					expiresAt: new Date(Date.now() + 86400000),
 				},
 			];
-			
+
 			const standing = calculateAccountStanding(violations as DbViolation[]);
 			expect(standing).toBe(AccountStanding.SUSPENDED);
 		});
@@ -251,7 +273,7 @@ describe("violation-utils", () => {
 					expiresAt: new Date(Date.now() + 86400000), // Active
 				},
 			];
-			
+
 			const standing = calculateAccountStanding(violations as DbViolation[]);
 			expect(standing).toBe(AccountStanding.LIMITED); // Only LOW violation counts
 		});
@@ -262,7 +284,7 @@ describe("violation-utils", () => {
 			const violation: Partial<DbViolation> = {
 				expiresAt: new Date(Date.now() - 1000),
 			};
-			
+
 			expect(isExpired(violation as DbViolation)).toBe(true);
 		});
 
@@ -270,7 +292,7 @@ describe("violation-utils", () => {
 			const violation: Partial<DbViolation> = {
 				expiresAt: new Date(Date.now() + 86400000),
 			};
-			
+
 			expect(isExpired(violation as DbViolation)).toBe(false);
 		});
 
@@ -278,7 +300,7 @@ describe("violation-utils", () => {
 			const violation: Partial<DbViolation> = {
 				expiresAt: null,
 			};
-			
+
 			expect(isExpired(violation as DbViolation)).toBe(false);
 		});
 
@@ -287,7 +309,7 @@ describe("violation-utils", () => {
 			const violation: Partial<DbViolation> = {
 				expiresAt: now,
 			};
-			
+
 			// Should be considered expired if expiresAt equals current time
 			expect(isExpired(violation as DbViolation)).toBe(false);
 		});
@@ -433,7 +455,7 @@ describe("violation-utils", () => {
 			// NSFW CRITICAL should have both type-specific and severity-specific TIMEOUT
 			// but should only appear once
 			const restrictions = getDefaultRestrictions(ViolationType.EVASION, ViolationSeverity.CRITICAL);
-			const timeoutCount = restrictions.filter(r => r === FeatureRestriction.TIMEOUT).length;
+			const timeoutCount = restrictions.filter((r) => r === FeatureRestriction.TIMEOUT).length;
 			expect(timeoutCount).toBe(1);
 		});
 	});

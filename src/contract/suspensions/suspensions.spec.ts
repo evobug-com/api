@@ -1,19 +1,19 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { type DbUser, type DbSuspension, suspensionsTable } from "../../db/schema";
-import * as schema from "../../db/schema";
+import type * as schema from "../../db/schema";
+import { type DbSuspension, type DbUser, suspensionsTable } from "../../db/schema";
 import { createTestContext, createTestDatabase } from "../shared/test-utils";
 import { createUser } from "../users";
 import {
-	createSuspension,
-	liftSuspension,
-	checkSuspension,
-	listSuspensions,
-	getSuspensionHistory,
 	autoExpireSuspensions,
+	checkSuspension,
+	createSuspension,
+	getSuspensionHistory,
+	liftSuspension,
+	listSuspensions,
 } from "./index";
 
 describe("Suspensions", () => {
@@ -25,25 +25,13 @@ describe("Suspensions", () => {
 
 	beforeEach(async () => {
 		db = await createTestDatabase();
-		
+
 		// Create test users
-		testUser = await call(
-			createUser,
-			{ username: "suspensionTestUser" },
-			createTestContext(db),
-		);
-		
-		issuerUser = await call(
-			createUser,
-			{ username: "suspensionIssuerUser" },
-			createTestContext(db),
-		);
-		
-		lifterUser = await call(
-			createUser,
-			{ username: "suspensionLifterUser" },
-			createTestContext(db),
-		);
+		testUser = await call(createUser, { username: "suspensionTestUser" }, createTestContext(db));
+
+		issuerUser = await call(createUser, { username: "suspensionIssuerUser" }, createTestContext(db));
+
+		lifterUser = await call(createUser, { username: "suspensionLifterUser" }, createTestContext(db));
 	});
 
 	describe("createSuspension", () => {
@@ -68,11 +56,9 @@ describe("Suspensions", () => {
 			expect(result.suspension.liftedAt).toBeNull();
 			expect(result.message).toContain("User has been suspended");
 			expect(result.isPermanent).toBe(false);
-			
+
 			// Default duration should be 30 days
-			const daysDiff = Math.round(
-				(new Date(result.suspension.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-			);
+			const daysDiff = Math.round((new Date(result.suspension.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 			expect(daysDiff).toBeGreaterThanOrEqual(29);
 			expect(daysDiff).toBeLessThanOrEqual(31);
 		});
@@ -93,10 +79,8 @@ describe("Suspensions", () => {
 
 			expect(result.suspension.endsAt).toBeInstanceOf(Date);
 			expect(result.message).toContain(`suspended for ${customDays} days`);
-			
-			const daysDiff = Math.round(
-				(new Date(result.suspension.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-			);
+
+			const daysDiff = Math.round((new Date(result.suspension.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 			expect(daysDiff).toBeGreaterThanOrEqual(customDays - 1);
 			expect(daysDiff).toBeLessThanOrEqual(customDays + 1);
 		});
@@ -249,9 +233,7 @@ describe("Suspensions", () => {
 			);
 
 			expect(result.suspension.endsAt).toBeInstanceOf(Date);
-			const daysDiff = Math.round(
-				(new Date(result.suspension.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-			);
+			const daysDiff = Math.round((new Date(result.suspension.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 			expect(daysDiff).toBeGreaterThanOrEqual(364);
 			expect(daysDiff).toBeLessThanOrEqual(366);
 		});
@@ -360,11 +342,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should fail when user never had suspension", async () => {
-			const newUser = await call(
-				createUser,
-				{ username: "neverSuspendedUser" },
-				createTestContext(db),
-			);
+			const newUser = await call(createUser, { username: "neverSuspendedUser" }, createTestContext(db));
 
 			await expect(
 				call(
@@ -529,11 +507,7 @@ describe("Suspensions", () => {
 			// Create multiple test users
 			const users = [];
 			for (let i = 0; i < 5; i++) {
-				const user = await call(
-					createUser,
-					{ username: `listTestUser${i}` },
-					createTestContext(db),
-				);
+				const user = await call(createUser, { username: `listTestUser${i}` }, createTestContext(db));
 				users.push(user);
 			}
 
@@ -603,7 +577,7 @@ describe("Suspensions", () => {
 
 			expect(result.suspensions).toHaveLength(3);
 			expect(result.total).toBe(3);
-			
+
 			// All should be active (not lifted, not expired)
 			for (const suspension of result.suspensions) {
 				expect(suspension.liftedAt).toBeNull();
@@ -626,11 +600,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should filter by userId", async () => {
-			const user = await call(
-				createUser,
-				{ username: "specificUser" },
-				createTestContext(db),
-			);
+			const user = await call(createUser, { username: "specificUser" }, createTestContext(db));
 
 			await call(
 				createSuspension,
@@ -688,11 +658,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should include user, issuer, and lifter relationships", async () => {
-			const user = await call(
-				createUser,
-				{ username: "relatedUser" },
-				createTestContext(db),
-			);
+			const user = await call(createUser, { username: "relatedUser" }, createTestContext(db));
 
 			await call(
 				createSuspension,
@@ -865,9 +831,9 @@ describe("Suspensions", () => {
 					.update(suspensionsTable)
 					.set({ endsAt: new Date(Date.now() - 1000) })
 					.where(eq(suspensionsTable.id, result.suspension.id));
-				
+
 				// Add small delay to ensure different timestamps
-				await new Promise(resolve => setTimeout(resolve, 10));
+				await new Promise((resolve) => setTimeout(resolve, 10));
 			}
 
 			const result = await call(
@@ -892,11 +858,7 @@ describe("Suspensions", () => {
 		beforeEach(async () => {
 			// Create expired suspensions
 			for (let i = 0; i < 3; i++) {
-				const user = await call(
-					createUser,
-					{ username: `expiredUser${i}` },
-					createTestContext(db),
-				);
+				const user = await call(createUser, { username: `expiredUser${i}` }, createTestContext(db));
 
 				const result = await call(
 					createSuspension,
@@ -919,11 +881,7 @@ describe("Suspensions", () => {
 
 			// Create active suspensions
 			for (let i = 0; i < 2; i++) {
-				const user = await call(
-					createUser,
-					{ username: `activeUser${i}` },
-					createTestContext(db),
-				);
+				const user = await call(createUser, { username: `activeUser${i}` }, createTestContext(db));
 
 				await call(
 					createSuspension,
@@ -939,11 +897,7 @@ describe("Suspensions", () => {
 			}
 
 			// Create lifted suspension
-			const liftedUser = await call(
-				createUser,
-				{ username: "liftedUser" },
-				createTestContext(db),
-			);
+			const liftedUser = await call(createUser, { username: "liftedUser" }, createTestContext(db));
 
 			await call(
 				createSuspension,
@@ -968,11 +922,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should auto-expire expired suspensions", async () => {
-			const result = await call(
-				autoExpireSuspensions,
-				{ guildId: testGuildId },
-				createTestContext(db),
-			);
+			const result = await call(autoExpireSuspensions, { guildId: testGuildId }, createTestContext(db));
 
 			expect(result.success).toBe(true);
 			expect(result.expiredCount).toBe(3);
@@ -994,18 +944,11 @@ describe("Suspensions", () => {
 		});
 
 		it("should not affect active suspensions", async () => {
-			await call(
-				autoExpireSuspensions,
-				{ guildId: testGuildId },
-				createTestContext(db),
-			);
+			await call(autoExpireSuspensions, { guildId: testGuildId }, createTestContext(db));
 
 			// Check that active suspensions are still active
 			const activeSuspensions = await db.query.suspensionsTable.findMany({
-				where: and(
-					eq(suspensionsTable.guildId, testGuildId),
-					eq(suspensionsTable.reason, "Active suspension 0"),
-				),
+				where: and(eq(suspensionsTable.guildId, testGuildId), eq(suspensionsTable.reason, "Active suspension 0")),
 			});
 
 			expect(activeSuspensions[0]!.liftedAt).toBeNull();
@@ -1013,41 +956,25 @@ describe("Suspensions", () => {
 
 		it("should not affect already lifted suspensions", async () => {
 			const beforeLiftedSuspensions = await db.query.suspensionsTable.findMany({
-				where: and(
-					eq(suspensionsTable.guildId, testGuildId),
-					eq(suspensionsTable.reason, "Already lifted"),
-				),
+				where: and(eq(suspensionsTable.guildId, testGuildId), eq(suspensionsTable.reason, "Already lifted")),
 			});
 
-			await call(
-				autoExpireSuspensions,
-				{ guildId: testGuildId },
-				createTestContext(db),
-			);
+			await call(autoExpireSuspensions, { guildId: testGuildId }, createTestContext(db));
 
 			const afterLiftedSuspensions = await db.query.suspensionsTable.findMany({
-				where: and(
-					eq(suspensionsTable.guildId, testGuildId),
-					eq(suspensionsTable.reason, "Already lifted"),
-				),
+				where: and(eq(suspensionsTable.guildId, testGuildId), eq(suspensionsTable.reason, "Already lifted")),
 			});
 
 			// Should not change already lifted suspension
 			expect(afterLiftedSuspensions[0]!.liftReason).not.toBe("Suspension expired automatically");
-			expect(afterLiftedSuspensions[0]!.updatedAt.getTime()).toBe(
-				beforeLiftedSuspensions[0]!.updatedAt.getTime()
-			);
+			expect(afterLiftedSuspensions[0]!.updatedAt.getTime()).toBe(beforeLiftedSuspensions[0]!.updatedAt.getTime());
 		});
 
 		it("should only expire suspensions for specified guild", async () => {
 			const otherGuildId = "other-guild-456";
-			
+
 			// Create expired suspension for another guild
-			const otherUser = await call(
-				createUser,
-				{ username: "otherGuildUser" },
-				createTestContext(db),
-			);
+			const otherUser = await call(createUser, { username: "otherGuildUser" }, createTestContext(db));
 
 			const otherResult = await call(
 				createSuspension,
@@ -1067,11 +994,7 @@ describe("Suspensions", () => {
 				.where(eq(suspensionsTable.id, otherResult.suspension.id));
 
 			// Auto-expire for original guild
-			await call(
-				autoExpireSuspensions,
-				{ guildId: testGuildId },
-				createTestContext(db),
-			);
+			await call(autoExpireSuspensions, { guildId: testGuildId }, createTestContext(db));
 
 			// Other guild's suspension should still be expired but not lifted
 			const otherGuildSuspension = await db.query.suspensionsTable.findFirst({
@@ -1084,18 +1007,10 @@ describe("Suspensions", () => {
 
 		it("should return zero when no suspensions to expire", async () => {
 			// First expire all
-			await call(
-				autoExpireSuspensions,
-				{ guildId: testGuildId },
-				createTestContext(db),
-			);
+			await call(autoExpireSuspensions, { guildId: testGuildId }, createTestContext(db));
 
 			// Try again
-			const result = await call(
-				autoExpireSuspensions,
-				{ guildId: testGuildId },
-				createTestContext(db),
-			);
+			const result = await call(autoExpireSuspensions, { guildId: testGuildId }, createTestContext(db));
 
 			expect(result.success).toBe(true);
 			expect(result.expiredCount).toBe(0);
@@ -1121,7 +1036,7 @@ describe("Suspensions", () => {
 
 		it("should handle very long reason text", async () => {
 			const longReason = "a".repeat(1001);
-			
+
 			await expect(
 				call(
 					createSuspension,

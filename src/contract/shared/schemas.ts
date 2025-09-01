@@ -1,10 +1,10 @@
 /**
  * Shared schemas for use across all API contracts
- * 
+ *
  * These schemas provide type-safe ID validation and are used throughout
  * the API to ensure consistency and prevent ID type confusion.
- * 
- * IMPORTANT: 
+ *
+ * IMPORTANT:
  * - userId is ALWAYS an internal database ID (number)
  * - discordId is a Discord snowflake (string)
  * - guildedId is a Guilded ID (string)
@@ -12,22 +12,16 @@
  */
 
 import { z } from "zod";
-import { 
-	discordIdSchema, 
-	guildIdSchema, 
-	guildedIdSchema, 
-	moderatorIdSchema, 
-	userIdSchema 
+import {
+	discordIdSchema,
+	guildedIdSchema,
+	guildIdSchema,
+	moderatorIdSchema,
+	userIdSchema,
 } from "../../utils/branded-types";
 
 // Re-export branded ID schemas for use across all contracts
-export { 
-	discordIdSchema, 
-	guildIdSchema, 
-	guildedIdSchema, 
-	moderatorIdSchema, 
-	userIdSchema 
-};
+export { discordIdSchema, guildIdSchema, guildedIdSchema, moderatorIdSchema, userIdSchema };
 
 /**
  * Common input for user lookup
@@ -39,10 +33,7 @@ export const userLookupSchema = z
 		discordId: discordIdSchema.optional(),
 		guildedId: guildedIdSchema.optional(),
 	})
-	.refine(
-		(data) => data.userId || data.discordId || data.guildedId,
-		"At least one ID type must be provided"
-	)
+	.refine((data) => data.userId || data.discordId || data.guildedId, "At least one ID type must be provided")
 	.describe("User lookup - provide either internal userId, discordId, or guildedId");
 
 //

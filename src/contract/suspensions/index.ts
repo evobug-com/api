@@ -1,12 +1,7 @@
 import { ORPCError } from "@orpc/client";
 import { and, eq, gte, isNotNull, isNull, lte, or } from "drizzle-orm";
 import { z } from "zod";
-import {
-	type InsertDbSuspension,
-	suspensionsSchema,
-	suspensionsTable,
-	usersTable,
-} from "../../db/schema";
+import { type InsertDbSuspension, suspensionsSchema, suspensionsTable, usersTable } from "../../db/schema";
 import { base } from "../shared/os";
 
 /**
@@ -246,17 +241,12 @@ export const listSuspensions = base
 		}
 
 		if (input.activeOnly) {
-			conditions.push(
-				isNull(suspensionsTable.liftedAt)
-			);
+			conditions.push(isNull(suspensionsTable.liftedAt));
 			conditions.push(
 				or(
 					isNull(suspensionsTable.endsAt),
-					and(
-						isNotNull(suspensionsTable.endsAt),
-						gte(suspensionsTable.endsAt, new Date())
-					)
-				)!
+					and(isNotNull(suspensionsTable.endsAt), gte(suspensionsTable.endsAt, new Date())),
+				)!,
 			);
 		}
 
@@ -306,10 +296,7 @@ export const getSuspensionHistory = base
 
 		// Find active suspension
 		const activeSuspension =
-			suspensions.find(
-				(s) =>
-					!s.liftedAt && (!s.endsAt || new Date(s.endsAt) > new Date()),
-			) || null;
+			suspensions.find((s) => !s.liftedAt && (!s.endsAt || new Date(s.endsAt) > new Date())) || null;
 
 		return {
 			suspensions,
@@ -343,7 +330,7 @@ export const autoExpireSuspensions = base
 				eq(suspensionsTable.guildId, input.guildId),
 				isNull(suspensionsTable.liftedAt),
 				isNotNull(suspensionsTable.endsAt),
-				lte(suspensionsTable.endsAt, new Date())
+				lte(suspensionsTable.endsAt, new Date()),
 			),
 		});
 

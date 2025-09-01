@@ -1,25 +1,15 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type * as schema from "../../db/schema";
 import { type DbUser, violationsTable } from "../../db/schema";
-import * as schema from "../../db/schema";
-import {
-	ViolationType,
-	ViolationSeverity,
-	AccountStanding,
-	FeatureRestriction,
-} from "../../utils/violation-utils";
+import { AccountStanding, FeatureRestriction, ViolationSeverity, ViolationType } from "../../utils/violation-utils";
 import { createTestContext, createTestDatabase } from "../shared/test-utils";
 import { createUser } from "../users";
 import { issueViolation } from "../violations";
-import {
-	getStanding,
-	calculateStanding,
-	getBulkStandings,
-	getUserRestrictions,
-} from "./index";
+import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions } from "./index";
 
 describe("Standing", () => {
 	let db: NodePgDatabase<typeof schema>;
@@ -29,19 +19,11 @@ describe("Standing", () => {
 
 	beforeEach(async () => {
 		db = await createTestDatabase();
-		
+
 		// Create test users
-		testUser = await call(
-			createUser,
-			{ username: "standingTestUser" },
-			createTestContext(db),
-		);
-		
-		issuerUser = await call(
-			createUser,
-			{ username: "standingIssuerUser" },
-			createTestContext(db),
-		);
+		testUser = await call(createUser, { username: "standingTestUser" }, createTestContext(db));
+
+		issuerUser = await call(createUser, { username: "standingIssuerUser" }, createTestContext(db));
 	});
 
 	describe("getStanding", () => {
@@ -300,7 +282,7 @@ describe("Standing", () => {
 
 		it("should find next expiration date among active violations", async () => {
 			const now = new Date();
-			
+
 			// Create violations with different expiration dates
 			await call(
 				issueViolation,
@@ -341,9 +323,7 @@ describe("Standing", () => {
 
 			expect(result.nextExpirationDate).toBeInstanceOf(Date);
 			// Should be approximately 10 days from now (the earliest expiration)
-			const daysDiff = Math.round(
-				(result.nextExpirationDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-			);
+			const daysDiff = Math.round((result.nextExpirationDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 			expect(daysDiff).toBeGreaterThanOrEqual(9);
 			expect(daysDiff).toBeLessThanOrEqual(11);
 		});
@@ -583,14 +563,10 @@ describe("Standing", () => {
 
 		beforeEach(async () => {
 			users = [];
-			
+
 			// Create multiple users with different violation profiles
 			for (let i = 0; i < 5; i++) {
-				const user = await call(
-					createUser,
-					{ username: `bulkUser${i}` },
-					createTestContext(db),
-				);
+				const user = await call(createUser, { username: `bulkUser${i}` }, createTestContext(db));
 				users.push(user);
 			}
 
@@ -667,8 +643,8 @@ describe("Standing", () => {
 		});
 
 		it("should get standings for multiple users", async () => {
-			const userIds = users.map(u => u.id);
-			
+			const userIds = users.map((u) => u.id);
+
 			const result = await call(
 				getBulkStandings,
 				{
@@ -679,10 +655,10 @@ describe("Standing", () => {
 			);
 
 			expect(result).toHaveLength(5);
-			
+
 			// Check each user's standing
-			const standingsMap = new Map(result.map(s => [s.userId, s]));
-			
+			const standingsMap = new Map(result.map((s) => [s.userId, s]));
+
 			expect(standingsMap.get(users[0]!.id)?.standing).toBe(AccountStanding.ALL_GOOD);
 			expect(standingsMap.get(users[1]!.id)?.standing).toBe(AccountStanding.LIMITED);
 			expect(standingsMap.get(users[2]!.id)?.standing).toBe(AccountStanding.VERY_LIMITED);
@@ -691,8 +667,8 @@ describe("Standing", () => {
 		});
 
 		it("should sort results by severity score", async () => {
-			const userIds = users.map(u => u.id);
-			
+			const userIds = users.map((u) => u.id);
+
 			const result = await call(
 				getBulkStandings,
 				{
@@ -723,7 +699,7 @@ describe("Standing", () => {
 
 		it("should handle maximum user limit", async () => {
 			const manyUserIds = Array.from({ length: 101 }, (_, i) => i + 1);
-			
+
 			await expect(
 				call(
 					getBulkStandings,
@@ -737,8 +713,8 @@ describe("Standing", () => {
 		});
 
 		it("should return correct active violation counts", async () => {
-			const userIds = users.map(u => u.id);
-			
+			const userIds = users.map((u) => u.id);
+
 			const result = await call(
 				getBulkStandings,
 				{
@@ -748,8 +724,8 @@ describe("Standing", () => {
 				createTestContext(db),
 			);
 
-			const standingsMap = new Map(result.map(s => [s.userId, s]));
-			
+			const standingsMap = new Map(result.map((s) => [s.userId, s]));
+
 			expect(standingsMap.get(users[0]!.id)?.activeViolations).toBe(0);
 			expect(standingsMap.get(users[1]!.id)?.activeViolations).toBe(1);
 			expect(standingsMap.get(users[2]!.id)?.activeViolations).toBe(2);
@@ -770,8 +746,8 @@ describe("Standing", () => {
 			);
 
 			expect(result.restrictions).toEqual([]);
-			expect(Object.values(result.hasRestriction).every(v => v === false)).toBe(true);
-			expect(Object.values(result.canPerform).every(v => v === true)).toBe(true);
+			expect(Object.values(result.hasRestriction).every((v) => v === false)).toBe(true);
+			expect(Object.values(result.canPerform).every((v) => v === true)).toBe(true);
 		});
 
 		it("should return restrictions from violations", async () => {
@@ -830,7 +806,7 @@ describe("Standing", () => {
 
 			expect(result.restrictions).toContain(FeatureRestriction.TIMEOUT);
 			expect(result.hasRestriction[FeatureRestriction.TIMEOUT]).toBe(true);
-			
+
 			// TIMEOUT affects all capabilities
 			expect(result.canPerform.sendMessages).toBe(false);
 			expect(result.canPerform.sendEmbeds).toBe(false);
@@ -927,23 +903,21 @@ describe("Standing", () => {
 			);
 
 			expect(result.restrictions).toEqual([]);
-			expect(Object.values(result.canPerform).every(v => v === true)).toBe(true);
+			expect(Object.values(result.canPerform).every((v) => v === true)).toBe(true);
 		});
 
 		it("should handle invalid JSON in restrictions field", async () => {
 			// Create violation with invalid JSON
-			await db
-				.insert(violationsTable)
-				.values({
-					userId: testUser.id,
-					guildId: testGuildId,
-					type: ViolationType.SPAM,
-					severity: ViolationSeverity.LOW,
-					reason: "Test",
-					restrictions: "not valid json",
-					issuedBy: issuerUser.id,
-					expiresAt: new Date(Date.now() + 86400000),
-				});
+			await db.insert(violationsTable).values({
+				userId: testUser.id,
+				guildId: testGuildId,
+				type: ViolationType.SPAM,
+				severity: ViolationSeverity.LOW,
+				reason: "Test",
+				restrictions: "not valid json",
+				issuedBy: issuerUser.id,
+				expiresAt: new Date(Date.now() + 86400000),
+			});
 
 			const result = await call(
 				getUserRestrictions,
@@ -956,7 +930,7 @@ describe("Standing", () => {
 
 			// Should handle gracefully and return empty restrictions
 			expect(result.restrictions).toEqual([]);
-			expect(Object.values(result.canPerform).every(v => v === true)).toBe(true);
+			expect(Object.values(result.canPerform).every((v) => v === true)).toBe(true);
 		});
 
 		it("should deduplicate restrictions from multiple violations", async () => {
@@ -997,9 +971,9 @@ describe("Standing", () => {
 			);
 
 			// Both violations add MESSAGE_LINK and MESSAGE_EMBED, but should only appear once
-			const linkCount = result.restrictions.filter(r => r === FeatureRestriction.MESSAGE_LINK).length;
-			const embedCount = result.restrictions.filter(r => r === FeatureRestriction.MESSAGE_EMBED).length;
-			
+			const linkCount = result.restrictions.filter((r) => r === FeatureRestriction.MESSAGE_LINK).length;
+			const embedCount = result.restrictions.filter((r) => r === FeatureRestriction.MESSAGE_EMBED).length;
+
 			expect(linkCount).toBe(1);
 			expect(embedCount).toBe(1);
 		});
