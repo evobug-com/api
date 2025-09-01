@@ -695,7 +695,7 @@ describe("Standing", () => {
 			for (let i = 0; i < result.length - 1; i++) {
 				const currentItem = result[i];
 				const nextItem = result[i + 1];
-				if (!currentItem?.severityScore || !nextItem?.severityScore) {
+				if (currentItem?.severityScore === undefined || nextItem?.severityScore === undefined) {
 					throw new Error("Severity score is undefined");
 				}
 
