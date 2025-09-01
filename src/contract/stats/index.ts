@@ -1,4 +1,3 @@
-import { ORPCError } from "@orpc/client";
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -45,18 +44,18 @@ export const userStats = base
 			levelProgress: levelProgressSchema,
 		}),
 	)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		const user = await context.db.query.usersTable.findFirst({
 			where: buildOrConditions(usersTable, input),
 			with: { stats: true },
 			columns: {},
 		});
 
-		if (!user) throw new ORPCError("NOT_FOUND", { message: "User not found" });
+		if (!user) throw errors.NOT_FOUND();
 		const stats = user.stats;
 
 		if (!stats) {
-			throw new ORPCError("NOT_FOUND", { message: "User stats not found" });
+			throw errors.NOT_FOUND();
 		}
 
 		const levelProgress = getLevelProgress(stats.xpCount);
@@ -147,7 +146,7 @@ export const leaderboard = base
 // 		}),
 // 	)
 // 	.output(z.array(userStatsLogSchema))
-// 	.handler(async ({ input, context }) => {
+// 	.handler(async ({ input, context, errors }) => {
 // 		const conditions = [eq(userStatsLogTable.userId, input.userId)];
 //
 // 		if (input.activityType) {
@@ -280,6 +279,14 @@ export const claimDaily = base
 			boostCount: true,
 		}),
 	)
+	.errors({
+		ALREADY_CLAIMED: {
+			message: "Daily reward already claimed today",
+		},
+		DATABASE_ERROR: {
+			message: "Database operation failed",
+		},
+	})
 	.output(
 		z.object({
 			updatedStats: userStatsSchema,
@@ -310,7 +317,7 @@ export const claimDaily = base
 			levelProgress: levelProgressSchema,
 		}),
 	)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		// Check if user exists
 		const user = await context.db.query.usersTable.findFirst({
 			with: {
@@ -320,11 +327,11 @@ export const claimDaily = base
 		});
 
 		if (!user) {
-			throw new ORPCError("NOT_FOUND", { message: "User not found" });
+			throw errors.NOT_FOUND();
 		}
 
 		if (!user.stats) {
-			throw new ORPCError("NOT_FOUND", { message: "User stats not found" });
+			throw errors.NOT_FOUND();
 		}
 
 		// Check if already claimed today
@@ -340,9 +347,7 @@ export const claimDaily = base
 		});
 
 		if (dailyLogs) {
-			throw new ORPCError("NOT_ACCEPTABLE", {
-				message: "Daily reward already claimed today",
-			});
+			throw errors.ALREADY_CLAIMED();
 		}
 
 		// Check if streak should be reset (missed a day)
@@ -402,9 +407,7 @@ export const claimDaily = base
 				.returning();
 
 			if (!updatedStats) {
-				throw new ORPCError("DATABASE_ERROR", {
-					message: "Failed to update user stats",
-				});
+				throw errors.DATABASE_ERROR();
 			}
 
 			// Log the activity
@@ -445,6 +448,17 @@ export const claimWork = base
 			boostCount: true,
 		}),
 	)
+	.errors({
+		ON_COOLDOWN: {
+			message: "Work is on cooldown",
+			data: z.object({
+				reason: z.string(),
+			}),
+		},
+		DATABASE_ERROR: {
+			message: "Database operation failed",
+		},
+	})
 	.output(
 		z.object({
 			statsLog: userStatsLogSchema,
@@ -477,14 +491,14 @@ export const claimWork = base
 			levelProgress: levelProgressSchema,
 		}),
 	)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		// Get user stats to check cooldown
 		const userStats = await context.db.query.userStatsTable.findFirst({
 			where: eq(userStatsTable.userId, input.userId),
 		});
 
 		if (!userStats) {
-			throw new ORPCError("NOT_FOUND", { message: "User stats not found" });
+			throw errors.NOT_FOUND();
 		}
 
 		// Check work cooldown (1 hour)
@@ -494,8 +508,10 @@ export const claimWork = base
 
 			if (now < cooldownEnd) {
 				const cooldownRemaining = Math.floor((cooldownEnd.getTime() - now.getTime()) / 1000);
-				throw new ORPCError("CONFLICT", {
-					message: `You're still on cooldown. Please wait ${cooldownRemaining} seconds.`,
+				throw errors.ON_COOLDOWN({
+					data: {
+						reason: `You're still on cooldown. Please wait ${cooldownRemaining} seconds.`,
+					},
 				});
 			}
 		}
@@ -536,9 +552,7 @@ export const claimWork = base
 				.returning();
 
 			if (!updatedStats) {
-				throw new ORPCError("DATABASE_ERROR", {
-					message: "Failed to update user stats",
-				});
+				throw errors.DATABASE_ERROR();
 			}
 
 			// Log the work activity
@@ -553,9 +567,7 @@ export const claimWork = base
 			const [statsLog] = await db.insert(userStatsLogTable).values(logData).returning();
 
 			if (!statsLog) {
-				throw new ORPCError("DATABASE_ERROR", {
-					message: "Failed to log work activity",
-				});
+				throw errors.DATABASE_ERROR();
 			}
 
 			// Get level progress
@@ -571,6 +583,206 @@ export const claimWork = base
 			};
 		});
 	});
+
+/**
+ * Server Tag Streak check and update
+ * Checks if user has a server tag and updates their streak accordingly
+ */
+export const checkServerTagStreak = base
+	.input(
+		z.object({
+			userId: z.number(),
+			hasServerTag: z.boolean(),
+			serverTagBadge: z.string().optional(),
+		}),
+	)
+	.errors({
+		DATABASE_ERROR: {
+			message: "Database operation failed",
+		},
+	})
+	.output(
+		z.object({
+			updatedStats: userStatsSchema,
+			streakChanged: z.boolean(),
+			rewardEarned: z.boolean(),
+			milestoneReached: z.number().optional(),
+			message: z.string(),
+		}),
+	)
+	.handler(async ({ input, context, errors }) => {
+		const userStats = await context.db.query.userStatsTable.findFirst({
+			where: eq(userStatsTable.userId, input.userId),
+		});
+
+		if (!userStats) {
+			throw errors.NOT_FOUND();
+		}
+
+		// Check if it's been at least 12 hours since last check
+		const now = new Date();
+		const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+
+		if (userStats.lastServerTagCheck && userStats.lastServerTagCheck > twelveHoursAgo) {
+			return {
+				updatedStats: userStats,
+				streakChanged: false,
+				rewardEarned: false,
+				message: "Server tag already checked recently",
+			};
+		}
+
+		let newStreak = userStats.serverTagStreak;
+		let streakChanged = false;
+		let rewardEarned = false;
+		let milestoneReached: number | undefined;
+		let message = "";
+
+		if (input.hasServerTag) {
+			// User has a server tag - increment streak
+			const badgeChanged =
+				input.serverTagBadge && userStats.serverTagBadge && userStats.serverTagBadge !== input.serverTagBadge;
+
+			newStreak = userStats.serverTagStreak + 1;
+			streakChanged = true;
+
+			// Check for badge change
+			if (badgeChanged) {
+				// Badge changed - they updated their tag, keep the streak
+				message = `Server tag updated to new badge, streak continues at ${newStreak} days!`;
+			}
+
+			// Check for 5-day milestone
+			if (newStreak > 0 && newStreak % 5 === 0) {
+				rewardEarned = true;
+				milestoneReached = newStreak;
+				message = `Server tag streak milestone reached: ${newStreak} days!`;
+			} else if (!badgeChanged) {
+				// Only set this message if badge didn't change
+				message = `Server tag streak increased to ${newStreak} days`;
+			}
+		} else {
+			// User doesn't have a server tag - reset streak
+			if (userStats.serverTagStreak > 0) {
+				newStreak = 0;
+				streakChanged = true;
+				message = `Server tag streak reset. Previous streak was ${userStats.serverTagStreak} days`;
+			} else {
+				message = "No server tag detected";
+			}
+		}
+
+		// Update user stats
+		const maxStreak = Math.max(userStats.maxServerTagStreak, newStreak);
+
+		return await context.db.transaction(async (db) => {
+			const [updatedStats] = await db
+				.update(userStatsTable)
+				.set({
+					serverTagStreak: newStreak,
+					maxServerTagStreak: maxStreak,
+					lastServerTagCheck: now,
+					serverTagBadge: input.serverTagBadge || userStats.serverTagBadge,
+					updatedAt: now,
+				})
+				.where(eq(userStatsTable.userId, input.userId))
+				.returning();
+
+			if (!updatedStats) {
+				throw errors.DATABASE_ERROR();
+			}
+
+			// If milestone reached, grant rewards
+			if (rewardEarned && milestoneReached) {
+				// Calculate rewards based on milestone with increased base and cap
+				const baseCoins = 250; // Increased from 100
+				const baseXp = 100; // Increased from 50
+				const milestoneMultiplier = Math.min(milestoneReached / 5, 10); // Cap at 10x
+
+				const coinsReward = baseCoins * milestoneMultiplier;
+				const xpReward = baseXp * milestoneMultiplier;
+
+				// Update coins and XP
+				const [rewardedStats] = await db
+					.update(userStatsTable)
+					.set({
+						coinsCount: updatedStats.coinsCount + coinsReward,
+						xpCount: updatedStats.xpCount + xpReward,
+						updatedAt: now,
+					})
+					.where(eq(userStatsTable.userId, input.userId))
+					.returning();
+
+				// Log the reward
+				const logData: InsertDbUserStatsLog = {
+					userId: input.userId,
+					activityType: "server_tag_milestone",
+					notes: `Server tag streak milestone: ${milestoneReached} days`,
+					xpEarned: xpReward,
+					coinsEarned: coinsReward,
+				};
+
+				await db.insert(userStatsLogTable).values(logData);
+
+				return {
+					updatedStats: rewardedStats || updatedStats,
+					streakChanged,
+					rewardEarned,
+					milestoneReached,
+					message: `${message} Earned ${coinsReward} coins and ${xpReward} XP!`,
+				};
+			}
+
+			return {
+				updatedStats,
+				streakChanged,
+				rewardEarned,
+				milestoneReached,
+				message,
+			};
+		});
+	});
+
+/**
+ * Get server tag streak info for a user
+ */
+export const getServerTagStreak = base
+	.input(
+		userStatsSchema.pick({
+			userId: true,
+		}),
+	)
+	.output(
+		z.object({
+			currentStreak: z.number(),
+			maxStreak: z.number(),
+			lastCheck: z.date().optional(),
+			nextMilestone: z.number(),
+			daysUntilMilestone: z.number(),
+		}),
+	)
+	.handler(async ({ input, context, errors }) => {
+		const userStats = await context.db.query.userStatsTable.findFirst({
+			where: eq(userStatsTable.userId, input.userId),
+		});
+
+		if (!userStats) {
+			throw errors.NOT_FOUND();
+		}
+
+		const currentStreak = userStats.serverTagStreak;
+		const nextMilestone = Math.ceil((currentStreak + 1) / 5) * 5;
+		const daysUntilMilestone = nextMilestone - currentStreak;
+
+		return {
+			currentStreak,
+			maxStreak: userStats.maxServerTagStreak,
+			lastCheck: userStats.lastServerTagCheck || undefined,
+			nextMilestone,
+			daysUntilMilestone,
+		};
+	});
+
 //
 // /**
 //  * Update user stats contract
@@ -595,10 +807,10 @@ export const claimWork = base
 // 			message: z.string(),
 // 		}),
 // 	)
-// 	.handler(async ({ input, context }) => {
+// 	.handler(async ({ input, context, errors }) => {
 // 		// TODO: Add admin check
 // 		// if (context.user?.role !== 'admin') {
-// 		//     throw new ORPCError('FORBIDDEN', { message: 'Admin access required' });
+// 		//     throw errors('FORBIDDEN', { message: 'Admin access required' });
 // 		// }
 //
 // 		const { userId, ...updateData } = input;
@@ -611,7 +823,7 @@ export const claimWork = base
 // 			.limit(1);
 //
 // 		if (!existingStats) {
-// 			throw new ORPCError("NOT_FOUND", { message: "User stats not found" });
+// 			throw errors("NOT_FOUND", { message: "User stats not found" });
 // 		}
 //
 // 		// Update stats
@@ -625,7 +837,7 @@ export const claimWork = base
 // 			.returning();
 //
 // 		if (!updatedStats) {
-// 			throw new ORPCError("DATABASE_ERROR", {
+// 			throw errors("DATABASE_ERROR", {
 // 				message: "Failed to update user stats",
 // 			});
 // 		}
@@ -655,13 +867,13 @@ export const claimWork = base
 // 			statsLog: userStatsLogSchema.optional(),
 // 		}),
 // 	)
-// 	.handler(async ({ input, context }) => {
+// 	.handler(async ({ input, context, errors }) => {
 // 		// TODO: Add admin check
 // 		// if (context.user?.role !== 'admin') {
-// 		//     throw new ORPCError('FORBIDDEN', { message: 'Admin access required' });
+// 		//     throw errors('FORBIDDEN', { message: 'Admin access required' });
 // 		// }
 //
-// 		throw new ORPCError("NOT_IMPLEMENTED", {
+// 		throw errors("NOT_IMPLEMENTED", {
 // 			message: "Daily recovery not yet implemented",
 // 		});
 // 	});
@@ -684,13 +896,13 @@ export const claimWork = base
 // 			statsLog: userStatsLogSchema.optional(),
 // 		}),
 // 	)
-// 	.handler(async ({ input, context }) => {
+// 	.handler(async ({ input, context, errors }) => {
 // 		// TODO: Add admin check
 // 		// if (context.user?.role !== 'admin') {
-// 		//     throw new ORPCError('FORBIDDEN', { message: 'Admin access required' });
+// 		//     throw errors('FORBIDDEN', { message: 'Admin access required' });
 // 		// }
 //
-// 		throw new ORPCError("NOT_IMPLEMENTED", {
+// 		throw errors("NOT_IMPLEMENTED", {
 // 			message: "Work recovery not yet implemented",
 // 		});
 // 	});

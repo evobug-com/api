@@ -1,4 +1,3 @@
-import { ORPCError } from "@orpc/client";
 import { and, eq, gte, isNotNull, isNull, lte, or } from "drizzle-orm";
 import { z } from "zod";
 import { type InsertDbSuspension, suspensionsSchema, suspensionsTable, usersTable } from "../../db/schema";
@@ -18,6 +17,20 @@ export const createSuspension = base
 			issuedBy: z.number().int().positive(),
 		}),
 	)
+	.errors({
+		ISSUER_NOT_FOUND: {
+			message: "Issuer not found",
+		},
+		USER_NOT_FOUND: {
+			message: "User not found",
+		},
+		ALREADY_SUSPENDED: {
+			message: "User already has an active suspension",
+		},
+		CREATION_FAILED: {
+			message: "Failed to create suspension",
+		},
+	})
 	.output(
 		z.object({
 			suspension: suspensionsSchema,
@@ -25,14 +38,14 @@ export const createSuspension = base
 			isPermanent: z.boolean(),
 		}),
 	)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		// Check if issuer exists and has permission
 		const issuer = await context.db.query.usersTable.findFirst({
 			where: eq(usersTable.id, input.issuedBy),
 		});
 
 		if (!issuer) {
-			throw new ORPCError("NOT_FOUND", { message: "Issuer not found" });
+			throw errors.ISSUER_NOT_FOUND();
 		}
 
 		// Check if user exists
@@ -41,7 +54,7 @@ export const createSuspension = base
 		});
 
 		if (!user) {
-			throw new ORPCError("NOT_FOUND", { message: "User not found" });
+			throw errors.USER_NOT_FOUND();
 		}
 
 		// Check for active suspension
@@ -55,7 +68,7 @@ export const createSuspension = base
 		});
 
 		if (activeSuspension) {
-			throw new ORPCError("CONFLICT", { message: "User already has an active suspension" });
+			throw errors.ALREADY_SUSPENDED();
 		}
 
 		// Calculate expiration date (default to 30 days if not provided)
@@ -79,7 +92,7 @@ export const createSuspension = base
 		const [suspension] = await context.db.insert(suspensionsTable).values(newSuspension).returning();
 
 		if (!suspension) {
-			throw new ORPCError("INTERNAL_SERVER_ERROR", { message: "Failed to create suspension" });
+			throw errors.CREATION_FAILED();
 		}
 
 		const isPermanent = false; // No longer support permanent suspensions
@@ -106,20 +119,28 @@ export const liftSuspension = base
 			reason: z.string().optional(),
 		}),
 	)
+	.errors({
+		LIFTER_NOT_FOUND: {
+			message: "Lifter not found",
+		},
+		NO_ACTIVE_SUSPENSION: {
+			message: "No active suspension found for this user",
+		},
+	})
 	.output(
 		z.object({
 			success: z.boolean(),
 			message: z.string(),
 		}),
 	)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		// Check if lifter exists and has permission
 		const lifter = await context.db.query.usersTable.findFirst({
 			where: eq(usersTable.id, input.liftedBy),
 		});
 
 		if (!lifter) {
-			throw new ORPCError("NOT_FOUND", { message: "Lifter not found" });
+			throw errors.LIFTER_NOT_FOUND();
 		}
 
 		// Find active suspension
@@ -132,7 +153,7 @@ export const liftSuspension = base
 		});
 
 		if (!activeSuspension) {
-			throw new ORPCError("NOT_FOUND", { message: "No active suspension found for this user" });
+			throw errors.NO_ACTIVE_SUSPENSION();
 		}
 
 		// Lift the suspension

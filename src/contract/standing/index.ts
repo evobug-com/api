@@ -1,4 +1,3 @@
-import { ORPCError } from "@orpc/client";
 import { and, eq, gte, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { usersTable, violationsTable } from "../../db/schema";
@@ -39,14 +38,14 @@ export const getStanding = base
 			nextExpirationDate: z.date().nullable(),
 		}),
 	)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		// Check if user exists
 		const user = await context.db.query.usersTable.findFirst({
 			where: eq(usersTable.id, input.userId),
 		});
 
 		if (!user) {
-			throw new ORPCError("NOT_FOUND", { message: "User not found" });
+			throw errors.NOT_FOUND();
 		}
 
 		// Get all violations for the user in this guild

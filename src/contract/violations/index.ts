@@ -1,4 +1,3 @@
-import { ORPCError } from "@orpc/client";
 import { and, eq, gte, isNull, lte, or } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -47,6 +46,17 @@ export const issueViolation = base
 			actionsApplied: z.array(z.string()).optional(),
 		}),
 	)
+	.errors({
+		ISSUER_NOT_FOUND: {
+			message: "Issuer not found",
+		},
+		USER_NOT_FOUND: {
+			message: "User not found",
+		},
+		CREATION_FAILED: {
+			message: "Failed to create violation",
+		},
+	})
 	.output(
 		z.object({
 			violation: violationsSchema,
@@ -54,14 +64,14 @@ export const issueViolation = base
 			message: z.string(),
 		}),
 	)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		// Check if issuer exists and has permission (you might want to add role checking here)
 		const issuer = await context.db.query.usersTable.findFirst({
 			where: eq(usersTable.id, input.issuedBy),
 		});
 
 		if (!issuer) {
-			throw new ORPCError("NOT_FOUND", { message: "Issuer not found" });
+			throw errors.ISSUER_NOT_FOUND();
 		}
 
 		// Check if user exists
@@ -70,7 +80,7 @@ export const issueViolation = base
 		});
 
 		if (!user) {
-			throw new ORPCError("NOT_FOUND", { message: "User not found" });
+			throw errors.USER_NOT_FOUND();
 		}
 
 		// Calculate expiration date
@@ -100,7 +110,7 @@ export const issueViolation = base
 		const [violation] = await context.db.insert(violationsTable).values(newViolation).returning();
 
 		if (!violation) {
-			throw new ORPCError("INTERNAL_SERVER_ERROR", { message: "Failed to create violation" });
+			throw errors.CREATION_FAILED();
 		}
 
 		// Get all user violations to calculate new standing
@@ -191,7 +201,7 @@ export const getViolation = base
 		}),
 	)
 	.output(violationsSchema)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		const violation = await context.db.query.violationsTable.findFirst({
 			where: eq(violationsTable.id, input.violationId),
 			with: {
@@ -202,7 +212,7 @@ export const getViolation = base
 		});
 
 		if (!violation) {
-			throw new ORPCError("NOT_FOUND", { message: "Violation not found" });
+			throw errors.NOT_FOUND();
 		}
 
 		return violation;
@@ -219,23 +229,28 @@ export const expireViolation = base
 			expiredBy: z.number().int().positive(),
 		}),
 	)
+	.errors({
+		ALREADY_EXPIRED: {
+			message: "Violation is already expired",
+		},
+	})
 	.output(
 		z.object({
 			success: z.boolean(),
 			message: z.string(),
 		}),
 	)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		const violation = await context.db.query.violationsTable.findFirst({
 			where: eq(violationsTable.id, input.violationId),
 		});
 
 		if (!violation) {
-			throw new ORPCError("NOT_FOUND", { message: "Violation not found" });
+			throw errors.NOT_FOUND();
 		}
 
 		if (violation.expiresAt && new Date(violation.expiresAt) < new Date()) {
-			throw new ORPCError("CONFLICT", { message: "Violation is already expired" });
+			throw errors.ALREADY_EXPIRED();
 		}
 
 		await context.db
@@ -265,6 +280,11 @@ export const updateViolationReview = base
 			notes: z.string().optional(),
 		}),
 	)
+	.errors({
+		UPDATE_FAILED: {
+			message: "Failed to update violation",
+		},
+	})
 	.output(
 		z.object({
 			success: z.boolean(),
@@ -272,13 +292,13 @@ export const updateViolationReview = base
 			violation: violationsSchema,
 		}),
 	)
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		const violation = await context.db.query.violationsTable.findFirst({
 			where: eq(violationsTable.id, input.violationId),
 		});
 
 		if (!violation) {
-			throw new ORPCError("NOT_FOUND", { message: "Violation not found" });
+			throw errors.NOT_FOUND();
 		}
 
 		const updateData: Partial<DbViolation> = {
@@ -301,7 +321,7 @@ export const updateViolationReview = base
 			.returning();
 
 		if (!result[0]) {
-			throw new ORPCError("INTERNAL_SERVER_ERROR", { message: "Failed to update violation" });
+			throw errors.UPDATE_FAILED();
 		}
 
 		return {

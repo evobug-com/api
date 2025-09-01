@@ -585,7 +585,7 @@ describe("Violations", () => {
 
 		it("should fail when violation does not exist", async () => {
 			await expect(call(getViolation, { violationId: 999999 }, createTestContext(db))).rejects.toThrow(
-				new ORPCError("NOT_FOUND", { message: "Violation not found" }),
+				new ORPCError("NOT_FOUND", { message: "Resource not found" }),
 			);
 		});
 	});
@@ -645,7 +645,7 @@ describe("Violations", () => {
 					},
 					createTestContext(db, reviewerUser),
 				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Violation not found" }));
+			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Resource not found" }));
 		});
 
 		it("should fail when violation is already expired", async () => {
@@ -660,16 +660,16 @@ describe("Violations", () => {
 			);
 
 			// Try to expire again
-			await expect(
-				call(
+			expect(() => {
+				return call(
 					expireViolation,
 					{
 						violationId: violation.id,
 						expiredBy: reviewerUser.id,
 					},
 					createTestContext(db, reviewerUser),
-				),
-			).rejects.toThrow(new ORPCError("CONFLICT", { message: "Violation is already expired" }));
+				);
+			}).toThrow(new ORPCError("CONFLICT", { message: "Violation is already expired" }));
 		});
 	});
 
@@ -759,7 +759,7 @@ describe("Violations", () => {
 					},
 					createTestContext(db, reviewerUser),
 				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Violation not found" }));
+			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Resource not found" }));
 		});
 	});
 

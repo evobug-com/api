@@ -1,4 +1,3 @@
-import { ORPCError } from "@orpc/client";
 import { eq, getTableColumns } from "drizzle-orm";
 import { type InsertDbUser, type InsertDbUserStats, userSchema, userStatsTable, usersTable } from "../../db/schema.ts";
 import { buildOrConditions } from "../../utils/db-utils.ts";
@@ -22,7 +21,15 @@ export const createUser = base
 			.partial(),
 	)
 	.output(userSchema.omit({ password: true }))
-	.handler(async ({ input, context }) => {
+	.errors({
+		USER_EXISTS: {
+			message: "User with provided details already exists",
+		},
+		DATABASE_ERROR: {
+			message: "Database operation failed",
+		},
+	})
+	.handler(async ({ input, context, errors }) => {
 		const whereCondition = buildOrConditions(usersTable, {
 			username: input.username,
 			email: input.email,
@@ -32,16 +39,16 @@ export const createUser = base
 
 		// If all are undefined, throw BAD_REQUEST
 		if (!whereCondition) {
-			throw new ORPCError("BAD_REQUEST", {
-				cause: "At least one of username, email, discordId or guildedId must be provided",
+			throw errors.BAD_REQUEST({
+				data: {
+					reason: "At least one of username, email, discordId or guildedId must be provided",
+				},
 			});
 		}
 
 		const users = await context.db.select().from(usersTable).where(whereCondition).limit(1);
 		if (users.length > 0) {
-			throw new ORPCError("NOT_ACCEPTABLE", {
-				message: "User with provided details already exists",
-			});
+			throw errors.USER_EXISTS();
 		}
 
 		const userInput: InsertDbUser = {};
@@ -57,9 +64,7 @@ export const createUser = base
 			const insertedUser = (await db.insert(usersTable).values(userInput).returning(selectableFields))?.[0] ?? null;
 
 			if (!insertedUser) {
-				throw new ORPCError("DATABASE_ERROR", {
-					message: "User couldn't be created",
-				});
+				throw errors.DATABASE_ERROR();
 			}
 
 			const userStatsInput: InsertDbUserStats = {
@@ -86,7 +91,7 @@ export const getUser = base
 			.partial(),
 	)
 	.output(userSchema.omit({ password: true }))
-	.handler(async ({ input, context }) => {
+	.handler(async ({ input, context, errors }) => {
 		const whereCondition = buildOrConditions(usersTable, {
 			id: input.id,
 			discordId: input.discordId,
@@ -94,8 +99,10 @@ export const getUser = base
 
 		// If all are undefined, throw BAD_REQUEST
 		if (!whereCondition) {
-			throw new ORPCError("BAD_REQUEST", {
-				cause: "At least one of id or discordId must be provided",
+			throw errors.BAD_REQUEST({
+				data: {
+					reason: "At least one of id or discordId must be provided",
+				},
 			});
 		}
 
@@ -103,7 +110,7 @@ export const getUser = base
 
 		const users = await context.db.select(userFields).from(usersTable).where(whereCondition).limit(1);
 		if (users.length <= 0) {
-			throw new ORPCError("NOT_FOUND", { message: "User not found" });
+			throw errors.NOT_FOUND();
 		}
 		return users[0] as Required<(typeof users)[number]>;
 	});
@@ -147,12 +154,15 @@ export const updateUser = base
 			.required({ id: true }),
 	)
 	.output(userSchema.omit({ password: true }))
-	.handler(async ({ input, context }) => {
+	.errors({
+		DATABASE_ERROR: {
+			message: "Unable to update user",
+		},
+	})
+	.handler(async ({ input, context, errors }) => {
 		const [user] = await context.db.select().from(usersTable).where(eq(usersTable.id, input.id)).limit(1);
 		if (!user) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "User not found",
-			});
+			throw errors.NOT_FOUND();
 		}
 
 		const updateData: InsertDbUser = {
@@ -172,9 +182,7 @@ export const updateUser = base
 			.where(eq(usersTable.id, input.id))
 			.returning(selectableFields);
 		if (!updatedUser) {
-			throw new ORPCError("DATABASE_ERROR", {
-				message: "Unable to update a user",
-			});
+			throw errors.DATABASE_ERROR();
 		}
 		return updatedUser;
 	});
