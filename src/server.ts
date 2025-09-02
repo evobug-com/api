@@ -35,7 +35,6 @@ const server = Bun.serve({
 	port: 3001,
 	async fetch(request: Request) {
 		const { matched, response } = await handler.handle(request, {
-			prefix: "/rpc",
 			context: { headers: request.headers as unknown as IncomingHttpHeaders, db, user: null as unknown as DbUser },
 		});
 
@@ -47,7 +46,7 @@ const server = Bun.serve({
 	},
 });
 
-console.log(`🚀 Server running at http://${server.hostname}:${server.port}/rpc`);
+console.log(`🚀 Server running at http://${server.hostname}:${server.port}`);
 
 // Graceful shutdown
 process.on("SIGTERM", async () => {
