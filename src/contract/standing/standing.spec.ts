@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type * as schema from "../../db/schema";
 import { type DbUser, violationsTable } from "../../db/schema";
 import { AccountStanding, FeatureRestriction, ViolationSeverity, ViolationType } from "../../utils/violation-utils";
@@ -12,7 +12,7 @@ import { issueViolation } from "../violations";
 import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions } from "./index";
 
 describe("Standing", () => {
-	let db: NodePgDatabase<typeof schema>;
+	let db: BunSQLDatabase<typeof schema>;
 	let testUser: Omit<DbUser, "password">;
 	let issuerUser: Omit<DbUser, "password">;
 	const testGuildId = "test-guild-123";

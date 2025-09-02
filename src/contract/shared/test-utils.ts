@@ -1,7 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { pushSchema } from "drizzle-kit/api";
 import { sql } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type { PgDatabase } from "drizzle-orm/pg-core/db";
 import { drizzle } from "drizzle-orm/pglite";
 import type { DbUser } from "../../db/schema.ts";
@@ -33,10 +33,10 @@ DECLARE
 	}
 
 	// biome-ignore lint/suspicious/noExplicitAny: This is for tests only, so using `any` is acceptable here.
-	return testDb as any as NodePgDatabase<typeof schema>;
+	return testDb as any as BunSQLDatabase<typeof schema>;
 };
 
-export const createTestContext = (db: NodePgDatabase<typeof schema>, user?: Partial<DbUser>) => {
+export const createTestContext = (db: BunSQLDatabase<typeof schema>, user?: Partial<DbUser>) => {
 	return {
 		context: {
 			db,

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type * as schema from "../../db/schema";
 import { type DbSuspension, type DbUser, suspensionsTable } from "../../db/schema";
 import { createTestContext, createTestDatabase } from "../shared/test-utils";
@@ -17,7 +17,7 @@ import {
 } from "./index";
 
 describe("Suspensions", () => {
-	let db: NodePgDatabase<typeof schema>;
+	let db: BunSQLDatabase<typeof schema>;
 	let testUser: Omit<DbUser, "password">;
 	let issuerUser: Omit<DbUser, "password">;
 	let lifterUser: Omit<DbUser, "password">;

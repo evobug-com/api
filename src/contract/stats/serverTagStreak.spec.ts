@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type * as schema from "../../db/schema.ts";
 import { userStatsLogTable, userStatsTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
@@ -10,7 +10,7 @@ import { createUser } from "../users/index.ts";
 import { checkServerTagStreak, getServerTagStreak } from "./index.ts";
 
 describe("Server Tag Streak functionality", () => {
-	let db: NodePgDatabase<typeof schema>;
+	let db: BunSQLDatabase<typeof schema>;
 	let testUserId: number;
 
 	beforeEach(async () => {

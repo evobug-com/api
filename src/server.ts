@@ -3,7 +3,7 @@ import { CORSPlugin } from "@orpc/server/plugins";
 import { router } from "./contract/router.ts";
 import "dotenv/config";
 import type { IncomingHttpHeaders } from "node:http";
-import { drizzle, type NodePgClient } from "drizzle-orm/node-postgres";
+import { drizzle } from "drizzle-orm/bun-sql";
 import { createTestDatabase } from "./contract/shared/test-utils.ts";
 import type { DbUser } from "./db/schema.ts";
 import * as schema from "./db/schema.ts";
@@ -18,11 +18,12 @@ const pool = new Bun.SQL(process.env.DATABASE_URL, {
 	connectionTimeout: 10, // Connection timeout 10s
 });
 
-const db = process.env.USE_TEMP_DATABASE
-	? await createTestDatabase()
-	: drizzle(pool as unknown as NodePgClient, {
-			schema,
-		});
+const db =
+	process.env.USE_TEMP_DATABASE === "true"
+		? await createTestDatabase()
+		: drizzle(pool, {
+				schema,
+			});
 
 // To detect if we are connected to the database, if not it will throw an error
 await db.execute("SELECT 1");

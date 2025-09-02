@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type * as schema from "../../db/schema.ts";
 import { userStatsTable, usersTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser, updateUser } from "./index.ts";
 
 describe("Users", () => {
-	let db: NodePgDatabase<typeof schema>;
+	let db: BunSQLDatabase<typeof schema>;
 
 	beforeEach(async () => {
 		db = await createTestDatabase();
@@ -547,7 +547,7 @@ describe("Users", () => {
 });
 
 describe("User retrieval functions", () => {
-	let _db: NodePgDatabase<typeof schema>;
+	let _db: BunSQLDatabase<typeof schema>;
 
 	beforeEach(async () => {
 		_db = await createTestDatabase();
