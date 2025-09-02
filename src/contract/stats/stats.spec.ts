@@ -289,7 +289,7 @@ describe("Stats", async () => {
 					},
 					createTestContext(db, testUser),
 				);
-			}).toThrow(new ORPCError("NOT_FOUND", { message: "Resource not found" }));
+			}).toThrow(new ORPCError("NOT_FOUND", { message: "User not found for the given userId / claimDaily" }));
 		});
 
 		it("should reset streak when missing a day", async () => {
@@ -359,7 +359,7 @@ describe("Stats", async () => {
 					},
 					createTestContext(db, userWithoutStats),
 				);
-			}).toThrow(new ORPCError("NOT_FOUND", { message: "Resource not found" }));
+			}).toThrow(new ORPCError("NOT_FOUND", { message: "User stats not found for the given user / claimDaily" }));
 		});
 
 		it("should properly handle transaction rollback on failure", async () => {
@@ -765,7 +765,7 @@ describe("Stats", async () => {
 					},
 					createTestContext(db, userWithoutStats),
 				);
-			}).toThrow(new ORPCError("NOT_FOUND", { message: "Resource not found" }));
+			}).toThrow(new ORPCError("NOT_FOUND", { message: "User stats not found for the given user / claimWork" }));
 		});
 
 		it("should set cooldown to exactly 1 hour from claim time", async () => {

@@ -45,7 +45,9 @@ export const getStanding = base
 		});
 
 		if (!user) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "User not found for the given userId / getStanding",
+			});
 		}
 
 		// Get all violations for the user in this guild

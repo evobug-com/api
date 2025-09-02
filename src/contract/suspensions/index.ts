@@ -45,7 +45,9 @@ export const createSuspension = base
 		});
 
 		if (!issuer) {
-			throw errors.ISSUER_NOT_FOUND();
+			throw errors.ISSUER_NOT_FOUND({
+				message: "Issuer not found or does not have permission to issue suspensions / createSuspension",
+			});
 		}
 
 		// Check if user exists
@@ -54,7 +56,9 @@ export const createSuspension = base
 		});
 
 		if (!user) {
-			throw errors.USER_NOT_FOUND();
+			throw errors.USER_NOT_FOUND({
+				message: "User to be suspended not found / createSuspension",
+			});
 		}
 
 		// Check for active suspension
@@ -140,7 +144,9 @@ export const liftSuspension = base
 		});
 
 		if (!lifter) {
-			throw errors.LIFTER_NOT_FOUND();
+			throw errors.LIFTER_NOT_FOUND({
+				message: "Lifter not found or does not have permission to lift suspensions / liftSuspension",
+			});
 		}
 
 		// Find active suspension

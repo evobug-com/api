@@ -248,7 +248,11 @@ describe("Violations", () => {
 					},
 					createTestContext(db),
 				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Issuer not found" }));
+			).rejects.toThrow(
+				new ORPCError("NOT_FOUND", {
+					message: "Issuer not found or does not have permission to issue violations / issueViolation",
+				}),
+			);
 		});
 
 		it("should fail when user does not exist", async () => {
@@ -265,7 +269,9 @@ describe("Violations", () => {
 					},
 					createTestContext(db, issuerUser),
 				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "User not found" }));
+			).rejects.toThrow(
+				new ORPCError("NOT_FOUND", { message: "User to be issued a violation not found / issueViolation" }),
+			);
 		});
 
 		it("should handle ban evasion with appropriate restrictions", async () => {
@@ -585,7 +591,7 @@ describe("Violations", () => {
 
 		it("should fail when violation does not exist", async () => {
 			await expect(call(getViolation, { violationId: 999999 }, createTestContext(db))).rejects.toThrow(
-				new ORPCError("NOT_FOUND", { message: "Resource not found" }),
+				new ORPCError("NOT_FOUND", { message: "Violation not found for the given ID / getViolation" }),
 			);
 		});
 	});
@@ -645,7 +651,9 @@ describe("Violations", () => {
 					},
 					createTestContext(db, reviewerUser),
 				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Resource not found" }));
+			).rejects.toThrow(
+				new ORPCError("NOT_FOUND", { message: "Violation not found for the given ID / expireViolation" }),
+			);
 		});
 
 		it("should fail when violation is already expired", async () => {
@@ -759,7 +767,9 @@ describe("Violations", () => {
 					},
 					createTestContext(db, reviewerUser),
 				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Resource not found" }));
+			).rejects.toThrow(
+				new ORPCError("NOT_FOUND", { message: "Violation not found for the given ID / updateViolationReview" }),
+			);
 		});
 	});
 

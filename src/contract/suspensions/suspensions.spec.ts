@@ -97,7 +97,11 @@ describe("Suspensions", () => {
 					},
 					createTestContext(db),
 				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Issuer not found" }));
+			).rejects.toThrow(
+				new ORPCError("NOT_FOUND", {
+					message: "Issuer not found or does not have permission to issue suspensions / createSuspension",
+				}),
+			);
 		});
 
 		it("should fail when user does not exist", async () => {
@@ -112,7 +116,7 @@ describe("Suspensions", () => {
 					},
 					createTestContext(db, issuerUser),
 				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "User not found" }));
+			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "User to be suspended not found / createSuspension" }));
 		});
 
 		it("should fail when user already has active suspension", async () => {
@@ -312,7 +316,11 @@ describe("Suspensions", () => {
 					},
 					createTestContext(db),
 				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Lifter not found" }));
+			).rejects.toThrow(
+				new ORPCError("NOT_FOUND", {
+					message: "Lifter not found or does not have permission to lift suspensions / liftSuspension",
+				}),
+			);
 		});
 
 		it("should fail when no active suspension exists", async () => {

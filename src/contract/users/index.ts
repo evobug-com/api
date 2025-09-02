@@ -110,7 +110,9 @@ export const getUser = base
 
 		const users = await context.db.select(userFields).from(usersTable).where(whereCondition).limit(1);
 		if (users.length <= 0) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "User not found with the provided details / getUser",
+			});
 		}
 		return users[0] as Required<(typeof users)[number]>;
 	});
@@ -162,7 +164,9 @@ export const updateUser = base
 	.handler(async ({ input, context, errors }) => {
 		const [user] = await context.db.select().from(usersTable).where(eq(usersTable.id, input.id)).limit(1);
 		if (!user) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "User not found / updateUser",
+			});
 		}
 
 		const updateData: InsertDbUser = {

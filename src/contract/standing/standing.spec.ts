@@ -447,7 +447,7 @@ describe("Standing", () => {
 					},
 					createTestContext(db),
 				),
-			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "Resource not found" }));
+			).rejects.toThrow(new ORPCError("NOT_FOUND", { message: "User not found for the given userId / getStanding" }));
 		});
 
 		it("should handle invalid JSON in restrictions gracefully", async () => {

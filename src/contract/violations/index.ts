@@ -71,7 +71,9 @@ export const issueViolation = base
 		});
 
 		if (!issuer) {
-			throw errors.ISSUER_NOT_FOUND();
+			throw errors.ISSUER_NOT_FOUND({
+				message: "Issuer not found or does not have permission to issue violations / issueViolation",
+			});
 		}
 
 		// Check if user exists
@@ -80,7 +82,9 @@ export const issueViolation = base
 		});
 
 		if (!user) {
-			throw errors.USER_NOT_FOUND();
+			throw errors.USER_NOT_FOUND({
+				message: "User to be issued a violation not found / issueViolation",
+			});
 		}
 
 		// Calculate expiration date
@@ -212,7 +216,9 @@ export const getViolation = base
 		});
 
 		if (!violation) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "Violation not found for the given ID / getViolation",
+			});
 		}
 
 		return violation;
@@ -246,7 +252,9 @@ export const expireViolation = base
 		});
 
 		if (!violation) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "Violation not found for the given ID / expireViolation",
+			});
 		}
 
 		if (violation.expiresAt && new Date(violation.expiresAt) < new Date()) {
@@ -298,7 +306,9 @@ export const updateViolationReview = base
 		});
 
 		if (!violation) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "Violation not found for the given ID / updateViolationReview",
+			});
 		}
 
 		const updateData: Partial<DbViolation> = {

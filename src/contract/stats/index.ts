@@ -51,11 +51,16 @@ export const userStats = base
 			columns: {},
 		});
 
-		if (!user) throw errors.NOT_FOUND();
+		if (!user)
+			throw errors.NOT_FOUND({
+				message: "User not found for the given identifiers / userStats",
+			});
 		const stats = user.stats;
 
 		if (!stats) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "User stats not found for the given user / userStats",
+			});
 		}
 
 		const levelProgress = getLevelProgress(stats.xpCount);
@@ -327,11 +332,15 @@ export const claimDaily = base
 		});
 
 		if (!user) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "User not found for the given userId / claimDaily",
+			});
 		}
 
 		if (!user.stats) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "User stats not found for the given user / claimDaily",
+			});
 		}
 
 		// Check if already claimed today
@@ -498,7 +507,9 @@ export const claimWork = base
 		});
 
 		if (!userStats) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "User stats not found for the given user / claimWork",
+			});
 		}
 
 		// Check work cooldown (1 hour)
@@ -616,7 +627,9 @@ export const checkServerTagStreak = base
 		});
 
 		if (!userStats) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "User stats not found for the given user / checkServerTagStreak",
+			});
 		}
 
 		// Check if it's been at least 12 hours since last check
@@ -767,7 +780,9 @@ export const getServerTagStreak = base
 		});
 
 		if (!userStats) {
-			throw errors.NOT_FOUND();
+			throw errors.NOT_FOUND({
+				message: "User stats not found for the given user / getServerTagStreak",
+			});
 		}
 
 		const currentStreak = userStats.serverTagStreak;
