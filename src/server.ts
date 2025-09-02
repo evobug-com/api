@@ -43,7 +43,7 @@ const server = Bun.serve({
 			return response;
 		}
 
-		return new Response("Not found", { status: 404 });
+		return new Response(`${request.url} - Not Found`, { status: 404 });
 	},
 });
 
