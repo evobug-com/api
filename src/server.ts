@@ -11,7 +11,7 @@ import * as schema from "./db/schema.ts";
 if (process.env.DATABASE_URL === undefined)
 	throw new Error("DATABASE_URL environment variable is not set. Please set it to your database URL.");
 
-const pool = new Bun.SQL(process.env.DATABASE_URL, {
+const client = new Bun.SQL(process.env.DATABASE_URL, {
 	max: 20, // Maximum 20 concurrent connections
 	idleTimeout: 30, // Close idle connections after 30s
 	maxLifetime: 3600, // Max connection lifetime 1 hour
@@ -21,7 +21,8 @@ const pool = new Bun.SQL(process.env.DATABASE_URL, {
 const db =
 	process.env.USE_TEMP_DATABASE === "true"
 		? await createTestDatabase()
-		: drizzle(pool, {
+		: drizzle({
+                client,
 				schema,
 			});
 
@@ -52,6 +53,6 @@ console.log(`🚀 Server running at http://${server.hostname}:${server.port}`);
 // Graceful shutdown
 process.on("SIGTERM", async () => {
 	console.log("SIGTERM signal received: closing HTTP server");
-	await pool.end();
+	await client.end();
 	console.log("Database pool closed");
 });
