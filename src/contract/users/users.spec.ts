@@ -3,11 +3,11 @@ import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
+import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema.ts";
-import {userStatsTable, usersTable, type DbUser} from "../../db/schema.ts";
+import { type DbUser, userStatsTable, usersTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser, updateUser } from "./index.ts";
-import type {relations} from "../../db/relations.ts";
 
 describe("Users", () => {
 	let db: BunSQLDatabase<typeof schema, typeof relations>;
@@ -18,13 +18,13 @@ describe("Users", () => {
 
 	describe("create", () => {
 		it("should be able to create a user", async () => {
-			const user = await call(
+			const user = (await call(
 				createUser,
 				{
 					username: "testuser",
 				},
 				createTestContext(db),
-			) as Partial<DbUser>
+			)) as Partial<DbUser>;
 
 			expect(user).toStrictEqual({
 				id: expect.any(Number),
@@ -109,7 +109,7 @@ describe("Users", () => {
 				createTestContext(db),
 			);
 
-			const result = await call(
+			const result = (await call(
 				updateUser,
 				{
 					id: user.id,
@@ -117,7 +117,7 @@ describe("Users", () => {
 					discordId: "some-discord-id",
 				},
 				createTestContext(db),
-			) as Partial<DbUser>
+			)) as Partial<DbUser>;
 
 			expect(result).toStrictEqual({
 				id: user.id,
@@ -209,7 +209,7 @@ describe("Users", () => {
 			);
 
 			// Update the user keeping the same username
-			const result = await call(
+			const result = (await call(
 				updateUser,
 				{
 					id: user.id,
@@ -217,7 +217,7 @@ describe("Users", () => {
 					email: "newemail@example.com",
 				},
 				createTestContext(db),
-			) as Partial<DbUser>
+			)) as Partial<DbUser>;
 
 			expect(result.username).toBe("sameusernametest");
 			expect(result.email).toBe("newemail@example.com");
@@ -233,7 +233,7 @@ describe("Users", () => {
 					email: "test@example.com",
 				},
 				createTestContext(db),
-			)
+			);
 
 			expect(userWithEmail.email).toBe("test@example.com");
 			expect(userWithEmail.username).toBe("emailuser");
@@ -507,14 +507,14 @@ describe("Users", () => {
 			// Wait a bit to ensure different timestamps
 			await new Promise((resolve) => setTimeout(resolve, 100));
 
-			const result = await call(
+			const result = (await call(
 				updateUser,
 				{
 					id: testUser.id,
 					username: "updatedtimestamp",
 				},
 				createTestContext(db),
-			) as Partial<DbUser>
+			)) as Partial<DbUser>;
 
 			expect(result.createdAt).toEqual(originalCreatedAt);
 			expect(result.updatedAt?.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());

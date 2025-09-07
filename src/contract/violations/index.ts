@@ -174,9 +174,7 @@ export const listViolations = base
 
 		// Filter out expired violations if needed
 		if (!input.includeExpired) {
-			violations = violations.filter(
-				(v) => !v.expiresAt || v.expiresAt >= new Date()
-			);
+			violations = violations.filter((v) => !v.expiresAt || v.expiresAt >= new Date());
 		}
 
 		// Get total count from the filtered violations

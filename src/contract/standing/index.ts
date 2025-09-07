@@ -130,12 +130,9 @@ export const calculateStanding = base
 			where: {
 				userId: input.userId,
 				guildId: input.guildId,
-                expiresAt: {
-                    OR: [
-                        { isNull: true },
-                        { gte: new Date() }
-                    ]
-                }
+				expiresAt: {
+					OR: [{ isNull: true }, { gte: new Date() }],
+				},
 			},
 		});
 
@@ -233,12 +230,9 @@ export const getUserRestrictions = base
 			where: {
 				userId: input.userId,
 				guildId: input.guildId,
-                expiresAt: {
-                    OR: [
-                        { isNull: true },
-                        { gte: new Date() }
-                    ]
-                }
+				expiresAt: {
+					OR: [{ isNull: true }, { gte: new Date() }],
+				},
 			},
 		});
 		// Collect all restrictions

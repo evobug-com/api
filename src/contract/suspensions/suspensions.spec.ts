@@ -3,6 +3,7 @@ import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
+import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema";
 import { type DbSuspension, type DbUser, suspensionsTable } from "../../db/schema";
 import { createTestContext, createTestDatabase } from "../shared/test-utils";
@@ -15,24 +16,35 @@ import {
 	liftSuspension,
 	listSuspensions,
 } from "./index";
-import type {relations} from "../../db/relations.ts";
 
 describe("Suspensions", () => {
 	let db: BunSQLDatabase<typeof schema, typeof relations>;
-	let testUser: DbUser
-	let issuerUser: DbUser
-	let lifterUser: DbUser
+	let testUser: DbUser;
+	let issuerUser: DbUser;
+	let lifterUser: DbUser;
 	const testGuildId = "test-guild-123";
 
 	beforeEach(async () => {
 		db = await createTestDatabase();
 
 		// Create test users
-		testUser = await call(createUser, { username: "suspensionTestUser", password: 'hello' }, createTestContext(db)) as DbUser;
+		testUser = (await call(
+			createUser,
+			{ username: "suspensionTestUser", password: "hello" },
+			createTestContext(db),
+		)) as DbUser;
 
-		issuerUser = await call(createUser, { username: "suspensionIssuerUser", password: 'hello' }, createTestContext(db)) as DbUser;
+		issuerUser = (await call(
+			createUser,
+			{ username: "suspensionIssuerUser", password: "hello" },
+			createTestContext(db),
+		)) as DbUser;
 
-		lifterUser = await call(createUser, { username: "suspensionLifterUser", password: 'hello' }, createTestContext(db)) as DbUser;
+		lifterUser = (await call(
+			createUser,
+			{ username: "suspensionLifterUser", password: "hello" },
+			createTestContext(db),
+		)) as DbUser;
 	});
 
 	describe("createSuspension", () => {
@@ -351,7 +363,11 @@ describe("Suspensions", () => {
 		});
 
 		it("should fail when user never had suspension", async () => {
-			const newUser = await call(createUser, { username: "neverSuspendedUser", password: 'hello' }, createTestContext(db));
+			const newUser = await call(
+				createUser,
+				{ username: "neverSuspendedUser", password: "hello" },
+				createTestContext(db),
+			);
 
 			await expect(
 				call(
@@ -514,15 +530,13 @@ describe("Suspensions", () => {
 	describe("listSuspensions", () => {
 		beforeEach(async () => {
 			// Create multiple test users
-			const users = [] as unknown as [
-				DbUser,
-				DbUser,
-				DbUser,
-				DbUser,
-				DbUser,
-			];
+			const users = [] as unknown as [DbUser, DbUser, DbUser, DbUser, DbUser];
 			for (let i = 0; i < 5; i++) {
-				const user = await call(createUser, { username: `listTestUser${i}`, password: 'hello' }, createTestContext(db)) as DbUser
+				const user = (await call(
+					createUser,
+					{ username: `listTestUser${i}`, password: "hello" },
+					createTestContext(db),
+				)) as DbUser;
 				users.push(user);
 			}
 
@@ -617,7 +631,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should filter by userId", async () => {
-			const user = await call(createUser, { username: "specificUser", password: 'hello' }, createTestContext(db));
+			const user = await call(createUser, { username: "specificUser", password: "hello" }, createTestContext(db));
 
 			await call(
 				createSuspension,
@@ -680,7 +694,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should include user, issuer, and lifter relationships", async () => {
-			const user = await call(createUser, { username: "relatedUser", password: 'hello' }, createTestContext(db));
+			const user = await call(createUser, { username: "relatedUser", password: "hello" }, createTestContext(db));
 
 			await call(
 				createSuspension,
@@ -885,7 +899,7 @@ describe("Suspensions", () => {
 		beforeEach(async () => {
 			// Create expired suspensions
 			for (let i = 0; i < 3; i++) {
-				const user = await call(createUser, { username: `expiredUser${i}`, password: 'hello' }, createTestContext(db));
+				const user = await call(createUser, { username: `expiredUser${i}`, password: "hello" }, createTestContext(db));
 
 				const result = await call(
 					createSuspension,
@@ -908,7 +922,7 @@ describe("Suspensions", () => {
 
 			// Create active suspensions
 			for (let i = 0; i < 2; i++) {
-				const user = await call(createUser, { username: `activeUser${i}`, password: 'hello' }, createTestContext(db));
+				const user = await call(createUser, { username: `activeUser${i}`, password: "hello" }, createTestContext(db));
 
 				await call(
 					createSuspension,
@@ -924,7 +938,7 @@ describe("Suspensions", () => {
 			}
 
 			// Create lifted suspension
-			const liftedUser = await call(createUser, { username: "liftedUser", password: 'hello' }, createTestContext(db));
+			const liftedUser = await call(createUser, { username: "liftedUser", password: "hello" }, createTestContext(db));
 
 			await call(
 				createSuspension,
@@ -1019,7 +1033,11 @@ describe("Suspensions", () => {
 			const otherGuildId = "other-guild-456";
 
 			// Create expired suspension for another guild
-			const otherUser = await call(createUser, { username: "otherGuildUser", password: 'hello' }, createTestContext(db));
+			const otherUser = await call(
+				createUser,
+				{ username: "otherGuildUser", password: "hello" },
+				createTestContext(db),
+			);
 
 			const otherResult = await call(
 				createSuspension,

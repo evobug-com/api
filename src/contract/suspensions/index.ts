@@ -1,11 +1,6 @@
 import { eq, type TableFilter } from "drizzle-orm";
 import { z } from "zod";
-import {
-    type InsertDbSuspension,
-    suspensionsSchema,
-    suspensionsTable,
-    publicUserSchema
-} from "../../db/schema";
+import { type InsertDbSuspension, publicUserSchema, suspensionsSchema, suspensionsTable } from "../../db/schema";
 import { base } from "../shared/os";
 
 /**
@@ -71,12 +66,12 @@ export const createSuspension = base
 			where: {
 				userId: input.userId,
 				guildId: input.guildId,
-                liftedAt: {
-                    isNull: true
-                },
-                endsAt: {
-                    gte: new Date()
-                }
+				liftedAt: {
+					isNull: true,
+				},
+				endsAt: {
+					gte: new Date(),
+				},
 			},
 		});
 
@@ -163,9 +158,9 @@ export const liftSuspension = base
 			where: {
 				userId: input.userId,
 				guildId: input.guildId,
-                liftedAt: {
-                    isNull: true
-                }
+				liftedAt: {
+					isNull: true,
+				},
 			},
 		});
 
@@ -215,12 +210,12 @@ export const checkSuspension = base
 			where: {
 				userId: input.userId,
 				guildId: input.guildId,
-                liftedAt: {
-                    isNull: true
-                },
-                endsAt: {gte: new Date()}
-            }
-        });
+				liftedAt: {
+					isNull: true,
+				},
+				endsAt: { gte: new Date() },
+			},
+		});
 
 		if (!suspension) {
 			return {
@@ -288,10 +283,7 @@ export const listSuspensions = base
 			whereConditions.liftedAt = { isNull: true };
 			// For endsAt, we need OR condition: either NULL or >= now
 			// This requires using OR array
-			whereConditions.OR = [
-				{ endsAt: { isNull: true } },
-				{ endsAt: { gte: new Date() } }
-			];
+			whereConditions.OR = [{ endsAt: { isNull: true } }, { endsAt: { gte: new Date() } }];
 		}
 
 		const suspensions = await context.db.query.suspensionsTable.findMany({
@@ -375,10 +367,10 @@ export const autoExpireSuspensions = base
 		const expiredSuspensions = await context.db.query.suspensionsTable.findMany({
 			where: {
 				guildId: input.guildId,
-                liftedAt: {
-                    isNull: true
-                },
-                endsAt: { lte: new Date(), isNotNull: true },
+				liftedAt: {
+					isNull: true,
+				},
+				endsAt: { lte: new Date(), isNotNull: true },
 			},
 		});
 

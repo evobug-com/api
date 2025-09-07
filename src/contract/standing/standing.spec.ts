@@ -3,6 +3,7 @@ import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
+import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema";
 import { type DbUser, violationsTable } from "../../db/schema";
 import { AccountStanding, FeatureRestriction, ViolationSeverity, ViolationType } from "../../utils/violation-utils";
@@ -10,21 +11,20 @@ import { createTestContext, createTestDatabase } from "../shared/test-utils";
 import { createUser } from "../users";
 import { issueViolation } from "../violations";
 import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions } from "./index";
-import type {relations} from "../../db/relations.ts";
 
 describe("Standing", () => {
 	let db: BunSQLDatabase<typeof schema, typeof relations>;
-	let testUser: DbUser
-	let issuerUser: DbUser
+	let testUser: DbUser;
+	let issuerUser: DbUser;
 	const testGuildId = "test-guild-123";
 
 	beforeEach(async () => {
 		db = await createTestDatabase();
 
 		// Create test users
-		testUser = await call(createUser, { username: "standingTestUser" }, createTestContext(db)) as DbUser
+		testUser = (await call(createUser, { username: "standingTestUser" }, createTestContext(db))) as DbUser;
 
-		issuerUser = await call(createUser, { username: "standingIssuerUser" }, createTestContext(db)) as DbUser
+		issuerUser = (await call(createUser, { username: "standingIssuerUser" }, createTestContext(db))) as DbUser;
 	});
 
 	describe("getStanding", () => {
@@ -570,17 +570,11 @@ describe("Standing", () => {
 		];
 
 		beforeEach(async () => {
-			users = [] as unknown as [
-				DbUser,
-				DbUser,
-				DbUser,
-				DbUser,
-				DbUser,
-			];
+			users = [] as unknown as [DbUser, DbUser, DbUser, DbUser, DbUser];
 
 			// Create multiple users with different violation profiles
 			for (let i = 0; i < 5; i++) {
-				const user = await call(createUser, { username: `bulkUser${i}` }, createTestContext(db)) as DbUser
+				const user = (await call(createUser, { username: `bulkUser${i}` }, createTestContext(db))) as DbUser;
 				users.push(user);
 			}
 

@@ -3,6 +3,7 @@ import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
+import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema";
 import { type DbUser, type DbViolation, violationsTable } from "../../db/schema";
 import {
@@ -22,7 +23,6 @@ import {
 	listViolations,
 	updateViolationReview,
 } from "./index";
-import type {relations} from "../../db/relations.ts";
 
 describe("Violations", () => {
 	let db: BunSQLDatabase<typeof schema, typeof relations>;

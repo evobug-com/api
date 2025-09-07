@@ -1,11 +1,11 @@
 import { eq, getTableColumns } from "drizzle-orm";
 import {
-    type InsertDbUser,
-    type InsertDbUserStats,
-    userSchema,
-    userStatsTable,
-    usersTable,
-    publicUserSchema
+	type InsertDbUser,
+	type InsertDbUserStats,
+	publicUserSchema,
+	userSchema,
+	userStatsTable,
+	usersTable,
 } from "../../db/schema.ts";
 import { buildOrConditions } from "../../utils/db-utils.ts";
 import { base } from "../shared/os.ts";
@@ -27,9 +27,11 @@ export const createUser = base
 			})
 			.partial(),
 	)
-	.output(userSchema.omit({
-        password: true
-    }))
+	.output(
+		userSchema.omit({
+			password: true,
+		}),
+	)
 	.errors({
 		USER_EXISTS: {
 			message: "User with provided details already exists",

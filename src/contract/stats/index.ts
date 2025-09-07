@@ -210,9 +210,9 @@ export const userDailyCooldown = base
 			where: {
 				userId: input.userId,
 				activityType: "daily",
-                createdAt: {
-                    gte: today
-                }
+				createdAt: {
+					gte: today,
+				},
 			},
 		});
 
@@ -365,15 +365,15 @@ export const claimDaily = base
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 
-        const dailyLogs = await context.db.query.userStatsLogTable.findFirst({
-            where: {
-                userId: input.userId,
-                activityType: "daily",
-                createdAt: {
-                    gte: today
-                }
-            },
-        });
+		const dailyLogs = await context.db.query.userStatsLogTable.findFirst({
+			where: {
+				userId: input.userId,
+				activityType: "daily",
+				createdAt: {
+					gte: today,
+				},
+			},
+		});
 
 		if (dailyLogs) {
 			throw errors.ALREADY_CLAIMED();
@@ -393,10 +393,10 @@ export const claimDaily = base
 				activityType: "daily",
 			},
 		});
-		
+
 		// Filter for yesterday's logs
 		const yesterdayLogs = yesterdayActivityLogs.find(
-			(log) => log.createdAt >= yesterday && log.createdAt <= yesterdayEnd
+			(log) => log.createdAt >= yesterday && log.createdAt <= yesterdayEnd,
 		);
 
 		// Update streak
