@@ -1,6 +1,4 @@
-import { and, eq, gte, isNull, or } from "drizzle-orm";
 import { z } from "zod";
-import { usersTable, violationsTable } from "../../db/schema";
 import {
 	AccountStanding,
 	calculateAccountStanding,
@@ -41,7 +39,9 @@ export const getStanding = base
 	.handler(async ({ input, context, errors }) => {
 		// Check if user exists
 		const user = await context.db.query.usersTable.findFirst({
-			where: eq(usersTable.id, input.userId),
+			where: {
+				id: input.userId,
+			},
 		});
 
 		if (!user) {
@@ -52,8 +52,11 @@ export const getStanding = base
 
 		// Get all violations for the user in this guild
 		const allViolations = await context.db.query.violationsTable.findMany({
-			where: and(eq(violationsTable.userId, input.userId), eq(violationsTable.guildId, input.guildId)),
-			orderBy: (violations, { desc }) => [desc(violations.issuedAt)],
+			where: {
+				userId: input.userId,
+				guildId: input.guildId,
+			},
+			orderBy: { issuedAt: "desc" },
 		});
 
 		// Filter active violations
@@ -123,15 +126,17 @@ export const calculateStanding = base
 	)
 	.handler(async ({ input, context }) => {
 		// Get all violations for the user
-		const violations = await context.db.query.violationsTable.findMany({
-			where: and(
-				eq(violationsTable.userId, input.userId),
-				eq(violationsTable.guildId, input.guildId),
-				or(isNull(violationsTable.expiresAt), gte(violationsTable.expiresAt, new Date())),
-			),
+		const allViolations = await context.db.query.violationsTable.findMany({
+			where: {
+				userId: input.userId,
+				guildId: input.guildId,
+				expiresAt: {
+					OR: [{ isNull: true }, { gte: new Date() }],
+				},
+			},
 		});
 
-		const standing = calculateAccountStanding(violations);
+		const standing = calculateAccountStanding(allViolations);
 
 		return {
 			standing,
@@ -166,7 +171,10 @@ export const getBulkStandings = base
 		for (const userId of input.userIds) {
 			// Get violations for each user
 			const violations = await context.db.query.violationsTable.findMany({
-				where: and(eq(violationsTable.userId, userId), eq(violationsTable.guildId, input.guildId)),
+				where: {
+					userId: userId,
+					guildId: input.guildId,
+				},
 			});
 
 			const activeViolations = violations.filter((v) => !isExpired(v));
@@ -219,13 +227,14 @@ export const getUserRestrictions = base
 	.handler(async ({ input, context }) => {
 		// Get active violations
 		const violations = await context.db.query.violationsTable.findMany({
-			where: and(
-				eq(violationsTable.userId, input.userId),
-				eq(violationsTable.guildId, input.guildId),
-				or(isNull(violationsTable.expiresAt), gte(violationsTable.expiresAt, new Date())),
-			),
+			where: {
+				userId: input.userId,
+				guildId: input.guildId,
+				expiresAt: {
+					OR: [{ isNull: true }, { gte: new Date() }],
+				},
+			},
 		});
-
 		// Collect all restrictions
 		const restrictions: FeatureRestriction[] = [];
 		for (const violation of violations) {

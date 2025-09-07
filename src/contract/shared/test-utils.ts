@@ -4,15 +4,22 @@ import { sql } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type { PgDatabase } from "drizzle-orm/pg-core/db";
 import { drizzle } from "drizzle-orm/pglite";
+import type { PgliteDatabase } from "drizzle-orm/pglite/driver";
+import { relations } from "../../db/relations.ts";
 import type { DbUser } from "../../db/schema.ts";
 import * as schema from "../../db/schema.ts";
 
-const client = new PGlite();
-const testDb = drizzle({ client, schema });
+let client!: PGlite;
+// biome-ignore lint/suspicious/noExplicitAny: For testing only
+let testDb!: PgliteDatabase<any>;
 let created = false;
 
 export const createTestDatabase = async (_shouldPushSchema = true) => {
 	if (!created) {
+		client = new PGlite();
+		testDb = drizzle({ client, schema, relations });
+
+		// biome-ignore lint/suspicious/noExplicitAny: For testing only
 		const { apply } = await pushSchema(schema, testDb as unknown as PgDatabase<any>);
 		await apply();
 		created = true;
@@ -33,10 +40,10 @@ DECLARE
 	}
 
 	// biome-ignore lint/suspicious/noExplicitAny: This is for tests only, so using `any` is acceptable here.
-	return testDb as any as BunSQLDatabase<typeof schema>;
+	return testDb as any as BunSQLDatabase<typeof schema, typeof relations>;
 };
 
-export const createTestContext = (db: BunSQLDatabase<typeof schema>, user?: Partial<DbUser>) => {
+export const createTestContext = (db: BunSQLDatabase<typeof schema, typeof relations>, user?: Partial<DbUser>) => {
 	return {
 		context: {
 			db,

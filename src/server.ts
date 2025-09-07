@@ -5,6 +5,7 @@ import "dotenv/config";
 import type { IncomingHttpHeaders } from "node:http";
 import { drizzle } from "drizzle-orm/bun-sql";
 import { createTestDatabase } from "./contract/shared/test-utils.ts";
+import { relations } from "./db/relations.ts";
 import type { DbUser } from "./db/schema.ts";
 import * as schema from "./db/schema.ts";
 
@@ -22,8 +23,9 @@ const db =
 	process.env.USE_TEMP_DATABASE === "true"
 		? await createTestDatabase()
 		: drizzle({
-                client,
+				client,
 				schema,
+				relations,
 			});
 
 // To detect if we are connected to the database, if not it will throw an error
