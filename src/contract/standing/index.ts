@@ -126,23 +126,20 @@ export const calculateStanding = base
 	)
 	.handler(async ({ input, context }) => {
 		// Get all violations for the user
-		const violations = await context.db.query.violationsTable.findMany({
+		const allViolations = await context.db.query.violationsTable.findMany({
 			where: {
 				userId: input.userId,
 				guildId: input.guildId,
-                // expiresAt: {
-                //     isNull: true,
-                //     gte: new Date()
-                // }
+                expiresAt: {
+                    OR: [
+                        { isNull: true },
+                        { gte: new Date() }
+                    ]
+                }
 			},
 		});
 
-		// Filter for active violations (not expired)
-		const activeViolations = violations.filter(
-			(v) => !v.expiresAt || new Date(v.expiresAt) >= new Date(),
-		);
-
-		const standing = calculateAccountStanding(activeViolations);
+		const standing = calculateAccountStanding(allViolations);
 
 		return {
 			standing,
@@ -232,18 +229,18 @@ export const getUserRestrictions = base
 	)
 	.handler(async ({ input, context }) => {
 		// Get active violations
-		const allViolations = await context.db.query.violationsTable.findMany({
+		const violations = await context.db.query.violationsTable.findMany({
 			where: {
 				userId: input.userId,
 				guildId: input.guildId,
+                expiresAt: {
+                    OR: [
+                        { isNull: true },
+                        { gte: new Date() }
+                    ]
+                }
 			},
 		});
-
-		// Filter for active violations (not expired)
-		const violations = allViolations.filter(
-			(v) => !v.expiresAt || new Date(v.expiresAt) >= new Date(),
-		);
-
 		// Collect all restrictions
 		const restrictions: FeatureRestriction[] = [];
 		for (const violation of violations) {
