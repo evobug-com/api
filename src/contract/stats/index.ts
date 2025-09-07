@@ -206,17 +206,15 @@ export const userDailyCooldown = base
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 
-		const allDailyLogs = await context.db.query.userStatsLogTable.findMany({
+		const dailyLogs = await context.db.query.userStatsLogTable.findMany({
 			where: {
 				userId: input.userId,
 				activityType: "daily",
+                createdAt: {
+                    gte: today
+                }
 			},
 		});
-		
-		// Filter for today's logs
-		const dailyLogs = allDailyLogs.filter(
-			(log) => log.createdAt >= today
-		);
 
 		const now = new Date();
 		const midnight = new Date(now);
@@ -367,17 +365,15 @@ export const claimDaily = base
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 
-		const allDailyLogs = await context.db.query.userStatsLogTable.findMany({
-			where: {
-				userId: input.userId,
-				activityType: "daily",
-			},
-		});
-		
-		// Filter for today's logs
-		const dailyLogs = allDailyLogs.find(
-			(log) => log.createdAt >= today
-		);
+        const dailyLogs = await context.db.query.userStatsLogTable.findFirst({
+            where: {
+                userId: input.userId,
+                activityType: "daily",
+                createdAt: {
+                    gte: today
+                }
+            },
+        });
 
 		if (dailyLogs) {
 			throw errors.ALREADY_CLAIMED();
