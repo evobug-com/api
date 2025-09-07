@@ -1,12 +1,6 @@
-import { and, eq, lte, or } from "drizzle-orm";
+import { and, eq, lte } from "drizzle-orm";
 import { z } from "zod";
-import {
-	type DbViolation,
-	type InsertDbViolation,
-	usersTable,
-	violationsSchema,
-	violationsTable,
-} from "../../db/schema";
+import { type DbViolation, type InsertDbViolation, violationsSchema, violationsTable } from "../../db/schema";
 import {
 	AccountStanding,
 	calculateAccountStanding,
