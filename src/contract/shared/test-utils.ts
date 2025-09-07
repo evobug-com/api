@@ -10,6 +10,7 @@ import type { DbUser } from "../../db/schema.ts";
 import * as schema from "../../db/schema.ts";
 
 let client!: PGlite;
+// biome-ignore lint/suspicious/noExplicitAny: For testing only
 let testDb!: PgliteDatabase<any>;
 let created = false;
 
@@ -18,6 +19,7 @@ export const createTestDatabase = async (_shouldPushSchema = true) => {
 		client = new PGlite();
 		testDb = drizzle({ client, schema, relations });
 
+		// biome-ignore lint/suspicious/noExplicitAny: For testing only
 		const { apply } = await pushSchema(schema, testDb as unknown as PgDatabase<any>);
 		await apply();
 		created = true;
