@@ -10,20 +10,21 @@ import { createTestContext, createTestDatabase } from "../shared/test-utils";
 import { createUser } from "../users";
 import { issueViolation } from "../violations";
 import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions } from "./index";
+import type {relations} from "../../db/relations.ts";
 
 describe("Standing", () => {
-	let db: BunSQLDatabase<typeof schema>;
-	let testUser: Omit<DbUser, "password">;
-	let issuerUser: Omit<DbUser, "password">;
+	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let testUser: DbUser
+	let issuerUser: DbUser
 	const testGuildId = "test-guild-123";
 
 	beforeEach(async () => {
 		db = await createTestDatabase();
 
 		// Create test users
-		testUser = await call(createUser, { username: "standingTestUser" }, createTestContext(db));
+		testUser = await call(createUser, { username: "standingTestUser" }, createTestContext(db)) as DbUser
 
-		issuerUser = await call(createUser, { username: "standingIssuerUser" }, createTestContext(db));
+		issuerUser = await call(createUser, { username: "standingIssuerUser" }, createTestContext(db)) as DbUser
 	});
 
 	describe("getStanding", () => {
@@ -570,16 +571,16 @@ describe("Standing", () => {
 
 		beforeEach(async () => {
 			users = [] as unknown as [
-				Omit<DbUser, "password">,
-				Omit<DbUser, "password">,
-				Omit<DbUser, "password">,
-				Omit<DbUser, "password">,
-				Omit<DbUser, "password">,
+				DbUser,
+				DbUser,
+				DbUser,
+				DbUser,
+				DbUser,
 			];
 
 			// Create multiple users with different violation profiles
 			for (let i = 0; i < 5; i++) {
-				const user = await call(createUser, { username: `bulkUser${i}` }, createTestContext(db));
+				const user = await call(createUser, { username: `bulkUser${i}` }, createTestContext(db)) as DbUser
 				users.push(user);
 			}
 

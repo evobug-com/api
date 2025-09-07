@@ -4,12 +4,13 @@ import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type * as schema from "../../db/schema.ts";
-import { userStatsTable, usersTable } from "../../db/schema.ts";
+import {userStatsTable, usersTable, type DbUser} from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser, updateUser } from "./index.ts";
+import type {relations} from "../../db/relations.ts";
 
 describe("Users", () => {
-	let db: BunSQLDatabase<typeof schema>;
+	let db: BunSQLDatabase<typeof schema, typeof relations>;
 
 	beforeEach(async () => {
 		db = await createTestDatabase();
@@ -23,7 +24,7 @@ describe("Users", () => {
 					username: "testuser",
 				},
 				createTestContext(db),
-			);
+			) as Partial<DbUser>
 
 			expect(user).toStrictEqual({
 				id: expect.any(Number),
@@ -116,7 +117,7 @@ describe("Users", () => {
 					discordId: "some-discord-id",
 				},
 				createTestContext(db),
-			);
+			) as Partial<DbUser>
 
 			expect(result).toStrictEqual({
 				id: user.id,
@@ -216,7 +217,7 @@ describe("Users", () => {
 					email: "newemail@example.com",
 				},
 				createTestContext(db),
-			);
+			) as Partial<DbUser>
 
 			expect(result.username).toBe("sameusernametest");
 			expect(result.email).toBe("newemail@example.com");
@@ -232,7 +233,7 @@ describe("Users", () => {
 					email: "test@example.com",
 				},
 				createTestContext(db),
-			);
+			)
 
 			expect(userWithEmail.email).toBe("test@example.com");
 			expect(userWithEmail.username).toBe("emailuser");
@@ -513,10 +514,10 @@ describe("Users", () => {
 					username: "updatedtimestamp",
 				},
 				createTestContext(db),
-			);
+			) as Partial<DbUser>
 
 			expect(result.createdAt).toEqual(originalCreatedAt);
-			expect(result.updatedAt.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());
+			expect(result.updatedAt?.getTime()).toBeGreaterThan(originalUpdatedAt.getTime());
 		});
 	});
 
@@ -547,7 +548,7 @@ describe("Users", () => {
 });
 
 describe("User retrieval functions", () => {
-	let _db: BunSQLDatabase<typeof schema>;
+	let _db: BunSQLDatabase<typeof schema, typeof relations>;
 
 	beforeEach(async () => {
 		_db = await createTestDatabase();

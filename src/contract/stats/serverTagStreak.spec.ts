@@ -8,9 +8,10 @@ import { userStatsLogTable, userStatsTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser } from "../users/index.ts";
 import { checkServerTagStreak, getServerTagStreak } from "./index.ts";
+import type {relations} from "../../db/relations.ts";
 
 describe("Server Tag Streak functionality", () => {
-	let db: BunSQLDatabase<typeof schema>;
+	let db: BunSQLDatabase<typeof schema, typeof relations>;
 	let testUserId: number;
 
 	beforeEach(async () => {

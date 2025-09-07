@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
 	type InsertDbUserStatsLog,
@@ -9,7 +9,6 @@ import {
 	userStatsTable,
 	usersTable,
 } from "../../db/schema.ts";
-import { buildOrConditions } from "../../utils/db-utils.ts";
 import { calculateLevel, calculateRewards, getLevelProgress } from "../../utils/stats-utils.ts";
 import { base } from "../shared/os.ts";
 
@@ -45,17 +44,35 @@ export const userStats = base
 		}),
 	)
 	.handler(async ({ input, context, errors }) => {
-		const user = await context.db.query.usersTable.findFirst({
-			where: buildOrConditions(usersTable, input),
-			with: { stats: true },
-			columns: {},
-		});
+		// Find user with any of the provided identifiers
+		// Note: v2 API doesn't support OR conditions directly in where object
+		// We need to make multiple queries or handle this differently
+		let user: { stats: typeof userStatsTable.$inferSelect | null } | null | undefined = null;
+		if (input.id !== undefined) {
+			user = await context.db.query.usersTable.findFirst({
+				where: { id: input.id },
+				with: { stats: true },
+				columns: {},
+			});
+		} else if (input.discordId !== undefined && input.discordId !== null) {
+			user = await context.db.query.usersTable.findFirst({
+				where: { discordId: input.discordId as string },
+				with: { stats: true },
+				columns: {},
+			});
+		} else if (input.guildedId !== undefined && input.guildedId !== null) {
+			user = await context.db.query.usersTable.findFirst({
+				where: { guildedId: input.guildedId as string },
+				with: { stats: true },
+				columns: {},
+			});
+		}
 
 		if (!user)
 			throw errors.NOT_FOUND({
 				message: "User not found for the given identifiers / userStats",
 			});
-		const stats = user.stats;
+		const stats = user?.stats;
 
 		if (!stats) {
 			throw errors.NOT_FOUND({
@@ -189,17 +206,17 @@ export const userDailyCooldown = base
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 
-		const dailyLogs = await context.db
-			.select()
-			.from(userStatsLogTable)
-			.where(
-				and(
-					eq(userStatsLogTable.userId, input.userId),
-					eq(userStatsLogTable.activityType, "daily"),
-					gte(userStatsLogTable.createdAt, today),
-				),
-			)
-			.limit(1);
+		const allDailyLogs = await context.db.query.userStatsLogTable.findMany({
+			where: {
+				userId: input.userId,
+				activityType: "daily",
+			},
+		});
+		
+		// Filter for today's logs
+		const dailyLogs = allDailyLogs.filter(
+			(log) => log.createdAt >= today
+		);
 
 		const now = new Date();
 		const midnight = new Date(now);
@@ -237,7 +254,7 @@ export const userWorkCooldown = base
 	.handler(async ({ input, context }) => {
 		// Get user's stats to check lastWorkAt
 		const userStats = await context.db.query.userStatsTable.findFirst({
-			where: eq(userStatsTable.userId, input.userId),
+			where: { userId: input.userId },
 		});
 
 		if (!userStats || !userStats.lastWorkAt) {
@@ -254,8 +271,11 @@ export const userWorkCooldown = base
 
 		// Get last work activity from log if needed
 		const lastWorkActivity = await context.db.query.userStatsLogTable.findFirst({
-			where: and(eq(userStatsLogTable.userId, input.userId), eq(userStatsLogTable.activityType, "work")),
-			orderBy: desc(userStatsLogTable.createdAt),
+			where: {
+				userId: input.userId,
+				activityType: "work",
+			},
+			orderBy: { createdAt: "desc" },
 		});
 
 		return {
@@ -328,7 +348,7 @@ export const claimDaily = base
 			with: {
 				stats: true,
 			},
-			where: eq(usersTable.id, input.userId),
+			where: { id: input.userId },
 		});
 
 		if (!user) {
@@ -347,13 +367,17 @@ export const claimDaily = base
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 
-		const dailyLogs = await context.db.query.userStatsLogTable.findFirst({
-			where: and(
-				eq(userStatsLogTable.userId, input.userId),
-				eq(userStatsLogTable.activityType, "daily"),
-				gte(userStatsLogTable.createdAt, today),
-			),
+		const allDailyLogs = await context.db.query.userStatsLogTable.findMany({
+			where: {
+				userId: input.userId,
+				activityType: "daily",
+			},
 		});
+		
+		// Filter for today's logs
+		const dailyLogs = allDailyLogs.find(
+			(log) => log.createdAt >= today
+		);
 
 		if (dailyLogs) {
 			throw errors.ALREADY_CLAIMED();
@@ -367,14 +391,17 @@ export const claimDaily = base
 		const yesterdayEnd = new Date(yesterday);
 		yesterdayEnd.setHours(23, 59, 59, 999);
 
-		const yesterdayLogs = await context.db.query.userStatsLogTable.findFirst({
-			where: and(
-				eq(userStatsLogTable.userId, input.userId),
-				eq(userStatsLogTable.activityType, "daily"),
-				gte(userStatsLogTable.createdAt, yesterday),
-				lte(userStatsLogTable.createdAt, yesterdayEnd),
-			),
+		const yesterdayActivityLogs = await context.db.query.userStatsLogTable.findMany({
+			where: {
+				userId: input.userId,
+				activityType: "daily",
+			},
 		});
+		
+		// Filter for yesterday's logs
+		const yesterdayLogs = yesterdayActivityLogs.find(
+			(log) => log.createdAt >= yesterday && log.createdAt <= yesterdayEnd
+		);
 
 		// Update streak
 		const newStreak = yesterdayLogs ? user.stats.dailyStreak + 1 : 1;
@@ -503,7 +530,7 @@ export const claimWork = base
 	.handler(async ({ input, context, errors }) => {
 		// Get user stats to check cooldown
 		const userStats = await context.db.query.userStatsTable.findFirst({
-			where: eq(userStatsTable.userId, input.userId),
+			where: { userId: input.userId },
 		});
 
 		if (!userStats) {
@@ -623,7 +650,7 @@ export const checkServerTagStreak = base
 	)
 	.handler(async ({ input, context, errors }) => {
 		const userStats = await context.db.query.userStatsTable.findFirst({
-			where: eq(userStatsTable.userId, input.userId),
+			where: { userId: input.userId },
 		});
 
 		if (!userStats) {
@@ -776,7 +803,7 @@ export const getServerTagStreak = base
 	)
 	.handler(async ({ input, context, errors }) => {
 		const userStats = await context.db.query.userStatsTable.findFirst({
-			where: eq(userStatsTable.userId, input.userId),
+			where: { userId: input.userId },
 		});
 
 		if (!userStats) {

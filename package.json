@@ -4,6 +4,7 @@
 	"type": "module",
 	"private": true,
 	"scripts": {
+		"start": "bun --bun run src/server.ts",
 		"dev": "bun --bun --watch src/server.ts",
 		"test": "bun test",
 		"test:watch": "bun test --watch",
@@ -30,8 +31,8 @@
 		"@orpc/contract": "^1.8.6",
 		"@orpc/server": "^1.8.6",
 		"dotenv": "^17.2.2",
-		"drizzle-orm": "^0.44.5",
-		"drizzle-zod": "^0.8.3",
+		"drizzle-orm": "alternation-engine",
+		"drizzle-zod": "alternation-engine",
 		"pg": "^8.16.3",
 		"zod": "^4.1.5"
 	}

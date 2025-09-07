@@ -1,5 +1,12 @@
 import { eq, getTableColumns } from "drizzle-orm";
-import { type InsertDbUser, type InsertDbUserStats, userSchema, userStatsTable, usersTable } from "../../db/schema.ts";
+import {
+    type InsertDbUser,
+    type InsertDbUserStats,
+    userSchema,
+    userStatsTable,
+    usersTable,
+    publicUserSchema
+} from "../../db/schema.ts";
 import { buildOrConditions } from "../../utils/db-utils.ts";
 import { base } from "../shared/os.ts";
 
@@ -20,7 +27,9 @@ export const createUser = base
 			})
 			.partial(),
 	)
-	.output(userSchema.omit({ password: true }))
+	.output(userSchema.omit({
+        password: true
+    }))
 	.errors({
 		USER_EXISTS: {
 			message: "User with provided details already exists",
@@ -90,7 +99,7 @@ export const getUser = base
 			})
 			.partial(),
 	)
-	.output(userSchema.omit({ password: true }))
+	.output(publicUserSchema)
 	.handler(async ({ input, context, errors }) => {
 		const whereCondition = buildOrConditions(usersTable, {
 			id: input.id,
@@ -155,7 +164,7 @@ export const updateUser = base
 			.partial()
 			.required({ id: true }),
 	)
-	.output(userSchema.omit({ password: true }))
+	.output(userSchema.partial())
 	.errors({
 		DATABASE_ERROR: {
 			message: "Unable to update user",

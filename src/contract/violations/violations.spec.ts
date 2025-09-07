@@ -22,9 +22,10 @@ import {
 	listViolations,
 	updateViolationReview,
 } from "./index";
+import type {relations} from "../../db/relations.ts";
 
 describe("Violations", () => {
-	let db: BunSQLDatabase<typeof schema>;
+	let db: BunSQLDatabase<typeof schema, typeof relations>;
 	let testUser: Omit<DbUser, "password">;
 	let issuerUser: Omit<DbUser, "password">;
 	let reviewerUser: Omit<DbUser, "password">;
@@ -631,7 +632,7 @@ describe("Violations", () => {
 
 			// Verify the violation is expired
 			const expiredViolation = await db.query.violationsTable.findFirst({
-				where: eq(violationsTable.id, violation.id),
+				where: { id: violation.id },
 			});
 
 			expect(expiredViolation?.expiresAt).toBeDefined();
@@ -895,7 +896,7 @@ describe("Violations", () => {
 
 			// Should not affect other guild's violations
 			const otherGuildViolations = await db.query.violationsTable.findMany({
-				where: eq(violationsTable.guildId, otherGuildId),
+				where: { guildId: otherGuildId },
 			});
 
 			expect(otherGuildViolations.length).toBe(1);

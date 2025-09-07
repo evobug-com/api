@@ -1,6 +1,11 @@
-import { and, eq, gte, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { eq, type TableFilter } from "drizzle-orm";
 import { z } from "zod";
-import { type InsertDbSuspension, suspensionsSchema, suspensionsTable, usersTable } from "../../db/schema";
+import {
+    type InsertDbSuspension,
+    suspensionsSchema,
+    suspensionsTable,
+    publicUserSchema
+} from "../../db/schema";
 import { base } from "../shared/os";
 
 /**
@@ -41,7 +46,7 @@ export const createSuspension = base
 	.handler(async ({ input, context, errors }) => {
 		// Check if issuer exists and has permission
 		const issuer = await context.db.query.usersTable.findFirst({
-			where: eq(usersTable.id, input.issuedBy),
+			where: { id: input.issuedBy },
 		});
 
 		if (!issuer) {
@@ -52,7 +57,7 @@ export const createSuspension = base
 
 		// Check if user exists
 		const user = await context.db.query.usersTable.findFirst({
-			where: eq(usersTable.id, input.userId),
+			where: { id: input.userId },
 		});
 
 		if (!user) {
@@ -62,14 +67,17 @@ export const createSuspension = base
 		}
 
 		// Check for active suspension
-		const activeSuspension = await context.db.query.suspensionsTable.findFirst({
-			where: and(
-				eq(suspensionsTable.userId, input.userId),
-				eq(suspensionsTable.guildId, input.guildId),
-				isNull(suspensionsTable.liftedAt),
-				gte(suspensionsTable.endsAt, new Date()),
-			),
+		const allSuspensions = await context.db.query.suspensionsTable.findMany({
+			where: {
+				userId: input.userId,
+				guildId: input.guildId,
+			},
 		});
+		
+		// Filter for active suspensions (not lifted and not expired)
+		const activeSuspension = allSuspensions.find(
+			(s) => !s.liftedAt && s.endsAt >= new Date()
+		);
 
 		if (activeSuspension) {
 			throw errors.ALREADY_SUSPENDED();
@@ -140,7 +148,7 @@ export const liftSuspension = base
 	.handler(async ({ input, context, errors }) => {
 		// Check if lifter exists and has permission
 		const lifter = await context.db.query.usersTable.findFirst({
-			where: eq(usersTable.id, input.liftedBy),
+			where: { id: input.liftedBy },
 		});
 
 		if (!lifter) {
@@ -150,13 +158,17 @@ export const liftSuspension = base
 		}
 
 		// Find active suspension
-		const activeSuspension = await context.db.query.suspensionsTable.findFirst({
-			where: and(
-				eq(suspensionsTable.userId, input.userId),
-				eq(suspensionsTable.guildId, input.guildId),
-				isNull(suspensionsTable.liftedAt),
-			),
+		const allSuspensions = await context.db.query.suspensionsTable.findMany({
+			where: {
+				userId: input.userId,
+				guildId: input.guildId,
+			},
 		});
+		
+		// Filter for active suspension (not lifted)
+		const activeSuspension = allSuspensions.find(
+			(s) => !s.liftedAt
+		);
 
 		if (!activeSuspension) {
 			throw errors.NO_ACTIVE_SUSPENSION();
@@ -200,14 +212,17 @@ export const checkSuspension = base
 	)
 	.handler(async ({ input, context }) => {
 		// Find active suspension
-		const suspension = await context.db.query.suspensionsTable.findFirst({
-			where: and(
-				eq(suspensionsTable.userId, input.userId),
-				eq(suspensionsTable.guildId, input.guildId),
-				isNull(suspensionsTable.liftedAt),
-				gte(suspensionsTable.endsAt, new Date()),
-			),
+		const allSuspensions = await context.db.query.suspensionsTable.findMany({
+			where: {
+				userId: input.userId,
+				guildId: input.guildId,
+			},
 		});
+		
+		// Filter for active suspension (not lifted and not expired)
+		const suspension = allSuspensions.find(
+			(s) => !s.liftedAt && s.endsAt >= new Date()
+		);
 
 		if (!suspension) {
 			return {
@@ -252,34 +267,37 @@ export const listSuspensions = base
 		z.object({
 			suspensions: z.array(
 				suspensionsSchema.extend({
-					user: z.any(),
-					issuer: z.any(),
-					lifter: z.any().nullable(),
+					user: publicUserSchema.nullable(),
+					issuer: publicUserSchema.nullable(),
+					lifter: publicUserSchema.nullable(),
 				}),
 			),
 			total: z.number(),
 		}),
 	)
 	.handler(async ({ input, context }) => {
-		const conditions = [eq(suspensionsTable.guildId, input.guildId)];
+		// Use the proper Filter type from Drizzle
+		const whereConditions: TableFilter<typeof suspensionsTable> = {
+			guildId: input.guildId,
+		};
 
 		if (input.userId) {
-			conditions.push(eq(suspensionsTable.userId, input.userId));
+			whereConditions.userId = input.userId;
 		}
 
 		if (input.activeOnly) {
-			conditions.push(isNull(suspensionsTable.liftedAt));
-			const activeCondition = or(
-				isNull(suspensionsTable.endsAt),
-				and(isNotNull(suspensionsTable.endsAt), gte(suspensionsTable.endsAt, new Date())),
-			);
-			if (activeCondition) {
-				conditions.push(activeCondition);
-			}
+			// Use proper v2 syntax for null check
+			whereConditions.liftedAt = { isNull: true };
+			// For endsAt, we need OR condition: either NULL or >= now
+			// This requires using OR array
+			whereConditions.OR = [
+				{ endsAt: { isNull: true } },
+				{ endsAt: { gte: new Date() } }
+			];
 		}
 
 		const suspensions = await context.db.query.suspensionsTable.findMany({
-			where: and(...conditions),
+			where: whereConditions,
 			with: {
 				user: true,
 				issuer: true,
@@ -287,11 +305,11 @@ export const listSuspensions = base
 			},
 			limit: input.limit,
 			offset: input.offset,
-			orderBy: (suspensions, { desc }) => [desc(suspensions.startedAt)],
+			orderBy: { startedAt: "desc" },
 		});
 
 		return {
-			suspensions,
+			suspensions: suspensions,
 			total: suspensions.length,
 		};
 	});
@@ -318,8 +336,11 @@ export const getSuspensionHistory = base
 	.handler(async ({ input, context }) => {
 		// Get all suspensions for the user
 		const suspensions = await context.db.query.suspensionsTable.findMany({
-			where: and(eq(suspensionsTable.userId, input.userId), eq(suspensionsTable.guildId, input.guildId)),
-			orderBy: (suspensions, { desc }) => [desc(suspensions.startedAt)],
+			where: {
+				userId: input.userId,
+				guildId: input.guildId,
+			},
+			orderBy: { startedAt: "desc" },
 		});
 
 		// Find active suspension
@@ -353,14 +374,16 @@ export const autoExpireSuspensions = base
 	)
 	.handler(async ({ input, context }) => {
 		// Find expired suspensions that haven't been lifted
-		const expiredSuspensions = await context.db.query.suspensionsTable.findMany({
-			where: and(
-				eq(suspensionsTable.guildId, input.guildId),
-				isNull(suspensionsTable.liftedAt),
-				isNotNull(suspensionsTable.endsAt),
-				lte(suspensionsTable.endsAt, new Date()),
-			),
+		const allSuspensions = await context.db.query.suspensionsTable.findMany({
+			where: {
+				guildId: input.guildId,
+			},
 		});
+		
+		// Filter for expired suspensions that haven't been lifted
+		const expiredSuspensions = allSuspensions.filter(
+			(s) => !s.liftedAt && s.endsAt && s.endsAt <= new Date()
+		);
 
 		// Lift expired suspensions
 		for (const suspension of expiredSuspensions) {

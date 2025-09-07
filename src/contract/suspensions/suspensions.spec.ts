@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type * as schema from "../../db/schema";
 import { type DbSuspension, type DbUser, suspensionsTable } from "../../db/schema";
@@ -15,23 +15,24 @@ import {
 	liftSuspension,
 	listSuspensions,
 } from "./index";
+import type {relations} from "../../db/relations.ts";
 
 describe("Suspensions", () => {
-	let db: BunSQLDatabase<typeof schema>;
-	let testUser: Omit<DbUser, "password">;
-	let issuerUser: Omit<DbUser, "password">;
-	let lifterUser: Omit<DbUser, "password">;
+	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let testUser: DbUser
+	let issuerUser: DbUser
+	let lifterUser: DbUser
 	const testGuildId = "test-guild-123";
 
 	beforeEach(async () => {
 		db = await createTestDatabase();
 
 		// Create test users
-		testUser = await call(createUser, { username: "suspensionTestUser" }, createTestContext(db));
+		testUser = await call(createUser, { username: "suspensionTestUser", password: 'hello' }, createTestContext(db)) as DbUser;
 
-		issuerUser = await call(createUser, { username: "suspensionIssuerUser" }, createTestContext(db));
+		issuerUser = await call(createUser, { username: "suspensionIssuerUser", password: 'hello' }, createTestContext(db)) as DbUser;
 
-		lifterUser = await call(createUser, { username: "suspensionLifterUser" }, createTestContext(db));
+		lifterUser = await call(createUser, { username: "suspensionLifterUser", password: 'hello' }, createTestContext(db)) as DbUser;
 	});
 
 	describe("createSuspension", () => {
@@ -277,7 +278,7 @@ describe("Suspensions", () => {
 
 			// Verify suspension was lifted
 			const liftedSuspension = await db.query.suspensionsTable.findFirst({
-				where: eq(suspensionsTable.id, suspension.id),
+				where: { id: suspension.id },
 			});
 
 			expect(liftedSuspension?.liftedAt).toBeInstanceOf(Date);
@@ -299,7 +300,7 @@ describe("Suspensions", () => {
 			expect(result.success).toBe(true);
 
 			const liftedSuspension = await db.query.suspensionsTable.findFirst({
-				where: eq(suspensionsTable.id, suspension.id),
+				where: { id: suspension.id },
 			});
 
 			expect(liftedSuspension?.liftReason).toBeNull();
@@ -350,7 +351,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should fail when user never had suspension", async () => {
-			const newUser = await call(createUser, { username: "neverSuspendedUser" }, createTestContext(db));
+			const newUser = await call(createUser, { username: "neverSuspendedUser", password: 'hello' }, createTestContext(db));
 
 			await expect(
 				call(
@@ -514,14 +515,14 @@ describe("Suspensions", () => {
 		beforeEach(async () => {
 			// Create multiple test users
 			const users = [] as unknown as [
-				Omit<DbUser, "password">,
-				Omit<DbUser, "password">,
-				Omit<DbUser, "password">,
-				Omit<DbUser, "password">,
-				Omit<DbUser, "password">,
+				DbUser,
+				DbUser,
+				DbUser,
+				DbUser,
+				DbUser,
 			];
 			for (let i = 0; i < 5; i++) {
-				const user = await call(createUser, { username: `listTestUser${i}` }, createTestContext(db));
+				const user = await call(createUser, { username: `listTestUser${i}`, password: 'hello' }, createTestContext(db)) as DbUser
 				users.push(user);
 			}
 
@@ -616,7 +617,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should filter by userId", async () => {
-			const user = await call(createUser, { username: "specificUser" }, createTestContext(db));
+			const user = await call(createUser, { username: "specificUser", password: 'hello' }, createTestContext(db));
 
 			await call(
 				createSuspension,
@@ -679,7 +680,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should include user, issuer, and lifter relationships", async () => {
-			const user = await call(createUser, { username: "relatedUser" }, createTestContext(db));
+			const user = await call(createUser, { username: "relatedUser", password: 'hello' }, createTestContext(db));
 
 			await call(
 				createSuspension,
@@ -884,7 +885,7 @@ describe("Suspensions", () => {
 		beforeEach(async () => {
 			// Create expired suspensions
 			for (let i = 0; i < 3; i++) {
-				const user = await call(createUser, { username: `expiredUser${i}` }, createTestContext(db));
+				const user = await call(createUser, { username: `expiredUser${i}`, password: 'hello' }, createTestContext(db));
 
 				const result = await call(
 					createSuspension,
@@ -907,7 +908,7 @@ describe("Suspensions", () => {
 
 			// Create active suspensions
 			for (let i = 0; i < 2; i++) {
-				const user = await call(createUser, { username: `activeUser${i}` }, createTestContext(db));
+				const user = await call(createUser, { username: `activeUser${i}`, password: 'hello' }, createTestContext(db));
 
 				await call(
 					createSuspension,
@@ -923,7 +924,7 @@ describe("Suspensions", () => {
 			}
 
 			// Create lifted suspension
-			const liftedUser = await call(createUser, { username: "liftedUser" }, createTestContext(db));
+			const liftedUser = await call(createUser, { username: "liftedUser", password: 'hello' }, createTestContext(db));
 
 			await call(
 				createSuspension,
@@ -956,10 +957,10 @@ describe("Suspensions", () => {
 
 			// Verify they were actually lifted
 			const expiredSuspensions = await db.query.suspensionsTable.findMany({
-				where: and(
-					eq(suspensionsTable.guildId, testGuildId),
-					eq(suspensionsTable.liftReason, "Suspension expired automatically"),
-				),
+				where: {
+					guildId: testGuildId,
+					liftReason: "Suspension expired automatically",
+				},
 			});
 
 			expect(expiredSuspensions).toHaveLength(3);
@@ -974,7 +975,10 @@ describe("Suspensions", () => {
 
 			// Check that active suspensions are still active
 			const activeSuspensions = await db.query.suspensionsTable.findMany({
-				where: and(eq(suspensionsTable.guildId, testGuildId), eq(suspensionsTable.reason, "Active suspension 0")),
+				where: {
+					guildId: testGuildId,
+					reason: "Active suspension 0",
+				},
 			});
 
 			expect(activeSuspensions[0]?.liftedAt).toBeNull();
@@ -982,13 +986,19 @@ describe("Suspensions", () => {
 
 		it("should not affect already lifted suspensions", async () => {
 			const beforeLiftedSuspensions = await db.query.suspensionsTable.findMany({
-				where: and(eq(suspensionsTable.guildId, testGuildId), eq(suspensionsTable.reason, "Already lifted")),
+				where: {
+					guildId: testGuildId,
+					reason: "Already lifted",
+				},
 			});
 
 			await call(autoExpireSuspensions, { guildId: testGuildId }, createTestContext(db));
 
 			const afterLiftedSuspensions = await db.query.suspensionsTable.findMany({
-				where: and(eq(suspensionsTable.guildId, testGuildId), eq(suspensionsTable.reason, "Already lifted")),
+				where: {
+					guildId: testGuildId,
+					reason: "Already lifted",
+				},
 			});
 
 			// Should not change already lifted suspension
@@ -1009,7 +1019,7 @@ describe("Suspensions", () => {
 			const otherGuildId = "other-guild-456";
 
 			// Create expired suspension for another guild
-			const otherUser = await call(createUser, { username: "otherGuildUser" }, createTestContext(db));
+			const otherUser = await call(createUser, { username: "otherGuildUser", password: 'hello' }, createTestContext(db));
 
 			const otherResult = await call(
 				createSuspension,
@@ -1033,7 +1043,7 @@ describe("Suspensions", () => {
 
 			// Other guild's suspension should still be expired but not lifted
 			const otherGuildSuspension = await db.query.suspensionsTable.findFirst({
-				where: eq(suspensionsTable.id, otherResult.suspension.id),
+				where: { id: otherResult.suspension.id },
 			});
 
 			expect(otherGuildSuspension?.liftedAt).toBeNull();

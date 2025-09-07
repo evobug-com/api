@@ -12,13 +12,13 @@ import { claimDaily, claimWork, leaderboard, userDailyCooldown, userStats, userW
 const db = await createTestDatabase();
 
 describe("Stats", async () => {
-	const testUser: Omit<DbUser, "password"> = await call(
+	const testUser: DbUser = await call(
 		createUser,
 		{
 			username: "testUser",
 		},
 		createTestContext(db),
-	);
+	) as DbUser
 
 	describe("userDailyCooldown", () => {
 		it("should return cooldown information for a user", async () => {
