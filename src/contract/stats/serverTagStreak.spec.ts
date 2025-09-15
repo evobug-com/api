@@ -3,6 +3,7 @@ import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
+import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema.ts";
 import { userStatsLogTable, userStatsTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
@@ -10,7 +11,7 @@ import { createUser } from "../users/index.ts";
 import { checkServerTagStreak, getServerTagStreak } from "./index.ts";
 
 describe("Server Tag Streak functionality", () => {
-	let db: BunSQLDatabase<typeof schema>;
+	let db: BunSQLDatabase<typeof schema, typeof relations>;
 	let testUserId: number;
 
 	beforeEach(async () => {

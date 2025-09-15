@@ -1,12 +1,6 @@
-import { and, eq, gte, isNull, lte, or } from "drizzle-orm";
+import { and, eq, lte } from "drizzle-orm";
 import { z } from "zod";
-import {
-	type DbViolation,
-	type InsertDbViolation,
-	usersTable,
-	violationsSchema,
-	violationsTable,
-} from "../../db/schema";
+import { type DbViolation, type InsertDbViolation, violationsSchema, violationsTable } from "../../db/schema";
 import {
 	AccountStanding,
 	calculateAccountStanding,
@@ -67,7 +61,7 @@ export const issueViolation = base
 	.handler(async ({ input, context, errors }) => {
 		// Check if issuer exists and has permission (you might want to add role checking here)
 		const issuer = await context.db.query.usersTable.findFirst({
-			where: eq(usersTable.id, input.issuedBy),
+			where: { id: input.issuedBy },
 		});
 
 		if (!issuer) {
@@ -78,7 +72,7 @@ export const issueViolation = base
 
 		// Check if user exists
 		const user = await context.db.query.usersTable.findFirst({
-			where: eq(usersTable.id, input.userId),
+			where: { id: input.userId },
 		});
 
 		if (!user) {
@@ -119,7 +113,10 @@ export const issueViolation = base
 
 		// Get all user violations to calculate new standing
 		const allViolations = await context.db.query.violationsTable.findMany({
-			where: and(eq(violationsTable.userId, input.userId), eq(violationsTable.guildId, input.guildId)),
+			where: {
+				userId: input.userId,
+				guildId: input.guildId,
+			},
 		});
 
 		const accountStanding = calculateAccountStanding(allViolations);
@@ -153,34 +150,29 @@ export const listViolations = base
 		}),
 	)
 	.handler(async ({ input, context }) => {
-		const conditions = [eq(violationsTable.guildId, input.guildId)];
+		// Build where conditions for v2 API
+		const whereConditions: Record<string, unknown> = {
+			guildId: input.guildId,
+		};
 
 		if (input.userId) {
-			conditions.push(eq(violationsTable.userId, input.userId));
+			whereConditions.userId = input.userId;
 		}
 
-		if (!input.includeExpired) {
-			// Only include non-expired violations
-			const notExpiredCondition = or(isNull(violationsTable.expiresAt), gte(violationsTable.expiresAt, new Date()));
-			if (notExpiredCondition) {
-				conditions.push(notExpiredCondition);
-			}
-		}
-
-		const violations = await context.db.query.violationsTable.findMany({
-			where: and(...conditions),
+		let violations = await context.db.query.violationsTable.findMany({
+			where: whereConditions,
 			limit: input.limit,
 			offset: input.offset,
-			orderBy: (violations, { desc }) => [desc(violations.issuedAt)],
+			orderBy: { issuedAt: "desc" },
 		});
 
-		// Get total count
-		const totalResult = await context.db
-			.select({ count: violationsTable.id })
-			.from(violationsTable)
-			.where(and(...conditions));
+		// Filter out expired violations if needed
+		if (!input.includeExpired) {
+			violations = violations.filter((v) => !v.expiresAt || v.expiresAt >= new Date());
+		}
 
-		const total = totalResult.length;
+		// Get total count from the filtered violations
+		const total = violations.length;
 
 		let accountStanding: AccountStanding | undefined;
 		if (input.userId) {
@@ -207,7 +199,7 @@ export const getViolation = base
 	.output(violationsSchema)
 	.handler(async ({ input, context, errors }) => {
 		const violation = await context.db.query.violationsTable.findFirst({
-			where: eq(violationsTable.id, input.violationId),
+			where: { id: input.violationId },
 			with: {
 				user: true,
 				issuer: true,
@@ -248,7 +240,7 @@ export const expireViolation = base
 	)
 	.handler(async ({ input, context, errors }) => {
 		const violation = await context.db.query.violationsTable.findFirst({
-			where: eq(violationsTable.id, input.violationId),
+			where: { id: input.violationId },
 		});
 
 		if (!violation) {
@@ -302,7 +294,7 @@ export const updateViolationReview = base
 	)
 	.handler(async ({ input, context, errors }) => {
 		const violation = await context.db.query.violationsTable.findFirst({
-			where: eq(violationsTable.id, input.violationId),
+			where: { id: input.violationId },
 		});
 
 		if (!violation) {

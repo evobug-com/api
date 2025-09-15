@@ -2,12 +2,13 @@ import type { IncomingHttpHeaders } from "node:http";
 import { os } from "@orpc/server";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import { z } from "zod";
+import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema.ts";
 import type { DbUser } from "../../db/schema.ts";
 
 export const base = os
 	.$context<{
-		db: BunSQLDatabase<typeof schema>;
+		db: BunSQLDatabase<typeof schema, typeof relations>;
 		user: Partial<DbUser> | undefined;
 		headers: IncomingHttpHeaders;
 	}>()

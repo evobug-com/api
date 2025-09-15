@@ -1,4 +1,4 @@
-import { relations, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
 	boolean,
 	check,
@@ -58,21 +58,9 @@ export const usersTable = pgTable(
 export type DbUser = typeof usersTable.$inferSelect;
 export type InsertDbUser = typeof usersTable.$inferInsert;
 export const userSchema = createSelectSchema(usersTable);
+export const publicUserSchema = userSchema.omit({ password: true, email: true });
 export const insertUserSchema = createInsertSchema(usersTable);
 export const updateUserSchema = createUpdateSchema(usersTable);
-
-export const usersRelations = relations(usersTable, ({ many, one }) => ({
-	stats: one(userStatsTable, {
-		fields: [usersTable.id],
-		references: [userStatsTable.userId],
-	}),
-	statsLog: many(userStatsLogTable),
-	orders: many(ordersTable),
-	violations: many(violationsTable),
-	reviews: many(userReviewsTable),
-	suspensions: many(suspensionsTable),
-	eventParticipations: many(eventParticipantsTable),
-}));
 
 export type DbUserWithRelations = DbUser & {
 	orders: DbOrder[];
@@ -114,13 +102,6 @@ export const updateUserReviewsSchema = createUpdateSchema(userReviewsTable);
 
 export type DbUserReview = typeof userReviewsTable.$inferSelect;
 export type InsertDbUserReview = typeof userReviewsTable.$inferInsert;
-
-export const userReviewsRelations = relations(userReviewsTable, ({ one }) => ({
-	user: one(usersTable, {
-		fields: [userReviewsTable.userId],
-		references: [usersTable.id],
-	}),
-}));
 
 export type DbUserReviewWithRelations = DbUserReview & {
 	user: DbUser;
@@ -183,21 +164,6 @@ export const updateViolationsSchema = createUpdateSchema(violationsTable);
 export type DbViolation = typeof violationsTable.$inferSelect;
 export type InsertDbViolation = typeof violationsTable.$inferInsert;
 
-export const violationsRelations = relations(violationsTable, ({ one }) => ({
-	user: one(usersTable, {
-		fields: [violationsTable.userId],
-		references: [usersTable.id],
-	}),
-	issuer: one(usersTable, {
-		fields: [violationsTable.issuedBy],
-		references: [usersTable.id],
-	}),
-	reviewer: one(usersTable, {
-		fields: [violationsTable.reviewedBy],
-		references: [usersTable.id],
-	}),
-}));
-
 export type DbViolationWithRelations = DbViolation & {
 	user: DbUser;
 	issuer: DbUser;
@@ -247,21 +213,6 @@ export const updateSuspensionsSchema = createUpdateSchema(suspensionsTable);
 
 export type DbSuspension = typeof suspensionsTable.$inferSelect;
 export type InsertDbSuspension = typeof suspensionsTable.$inferInsert;
-
-export const suspensionsRelations = relations(suspensionsTable, ({ one }) => ({
-	user: one(usersTable, {
-		fields: [suspensionsTable.userId],
-		references: [usersTable.id],
-	}),
-	issuer: one(usersTable, {
-		fields: [suspensionsTable.issuedBy],
-		references: [usersTable.id],
-	}),
-	lifter: one(usersTable, {
-		fields: [suspensionsTable.liftedBy],
-		references: [usersTable.id],
-	}),
-}));
 
 export type DbSuspensionWithRelations = DbSuspension & {
 	user: DbUser;
@@ -318,13 +269,6 @@ export const updateUserStatsSchema = createUpdateSchema(userStatsTable);
 export type DbUserStats = typeof userStatsTable.$inferSelect;
 export type InsertDbUserStats = typeof userStatsTable.$inferInsert;
 
-export const userStatsRelations = relations(userStatsTable, ({ one }) => ({
-	user: one(usersTable, {
-		fields: [userStatsTable.userId],
-		references: [usersTable.id],
-	}),
-}));
-
 export type DbUserStatsWithRelations = DbUserStats & {
 	user: DbUser;
 };
@@ -359,13 +303,6 @@ export const updateUserStatsLogSchema = createUpdateSchema(userStatsLogTable);
 
 export type DbUserStatsLog = typeof userStatsLogTable.$inferSelect;
 export type InsertDbUserStatsLog = typeof userStatsLogTable.$inferInsert;
-
-export const userStatsLogRelations = relations(userStatsLogTable, ({ one }) => ({
-	user: one(usersTable, {
-		fields: [userStatsLogTable.userId],
-		references: [usersTable.id],
-	}),
-}));
 
 export type DbUserStatsLogWithRelations = DbUserStatsLog & {
 	user: DbUser;
@@ -420,17 +357,6 @@ export const updateOrdersSchema = createUpdateSchema(ordersTable);
 
 export type DbOrder = typeof ordersTable.$inferSelect;
 export type InsertDbOrder = typeof ordersTable.$inferInsert;
-
-export const ordersRelations = relations(ordersTable, ({ one }) => ({
-	user: one(usersTable, {
-		fields: [ordersTable.userId],
-		references: [usersTable.id],
-	}),
-	product: one(productsTable, {
-		fields: [ordersTable.productId],
-		references: [productsTable.id],
-	}),
-}));
 
 export type DbOrderWithRelations = DbOrder & {
 	user: DbUser;
@@ -501,13 +427,6 @@ export const updateMessagesLogsSchema = createUpdateSchema(messagesLogsTable);
 
 export type DbMessageLog = typeof messagesLogsTable.$inferSelect;
 export type InsertDbMessageLog = typeof messagesLogsTable.$inferInsert;
-
-export const messagesLogsRelations = relations(messagesLogsTable, ({ one }) => ({
-	user: one(usersTable, {
-		fields: [messagesLogsTable.userId],
-		references: [usersTable.id],
-	}),
-}));
 
 export type DbMessageLogWithRelations = DbMessageLog & {
 	user: DbUser;
@@ -588,17 +507,6 @@ export const eventParticipantsSchema = createSelectSchema(eventParticipantsTable
 
 export type DbEventParticipant = typeof eventParticipantsTable.$inferSelect;
 export type InsertDbEventParticipant = typeof eventParticipantsTable.$inferInsert;
-
-export const eventParticipantsRelations = relations(eventParticipantsTable, ({ one }) => ({
-	event: one(eventsTable, {
-		fields: [eventParticipantsTable.eventId],
-		references: [eventsTable.id],
-	}),
-	user: one(usersTable, {
-		fields: [eventParticipantsTable.userId],
-		references: [usersTable.id],
-	}),
-}));
 
 export type DbEventParticipantWithRelations = DbEventParticipant & {
 	event: DbEvent;
