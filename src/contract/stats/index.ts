@@ -813,6 +813,163 @@ export const checkServerTagStreak = base
 	});
 
 /**
+ * Message milestone check contract
+ * - Tracks message count and checks for milestone achievements
+ * - Milestones: 100, 1000, 10000, 100000, 1000000 messages
+ * - Grants rewards for reaching each milestone
+ */
+export const checkMessageMilestone = base
+	.input(
+		userStatsSchema.pick({
+			userId: true,
+		}),
+	)
+	.errors({
+		NOT_FOUND: {
+			message: "User stats not found",
+		},
+		DATABASE_ERROR: {
+			message: "Database operation failed",
+		},
+	})
+	.output(
+		z.object({
+			updatedStats: userStatsSchema,
+			milestoneReached: z.number().optional(),
+			rewardEarned: z.boolean(),
+			message: z.string(),
+			claimStats: z.object({
+				baseCoins: z.number(),
+				baseXp: z.number(),
+				currentLevel: z.number(),
+				levelCoinsBonus: z.number(),
+				levelXpBonus: z.number(),
+				streakCoinsBonus: z.number(),
+				streakXpBonus: z.number(),
+				milestoneCoinsBonus: z.number(),
+				milestoneXpBonus: z.number(),
+				boostMultiplier: z.number(),
+				boostCoinsBonus: z.number(),
+				boostXpBonus: z.number(),
+				isMilestone: z.boolean(),
+				earnedTotalCoins: z.number(),
+				earnedTotalXp: z.number(),
+			}),
+			levelProgress: levelProgressSchema,
+			levelUp: z
+				.object({
+					oldLevel: z.number(),
+					newLevel: z.number(),
+					bonusCoins: z.number(),
+				})
+				.optional(),
+		}),
+	)
+	.handler(async ({ input, context, errors }) => {
+		const userStats = await context.db.query.userStatsTable.findFirst({
+			where: { userId: input.userId },
+		});
+
+		if (!userStats) {
+			throw errors.NOT_FOUND({
+				message: "User stats not found for the given user / checkMessageMilestone",
+			});
+		}
+
+		// Increment message count
+		const newMessageCount = userStats.messagesCount + 1;
+		const currentLevel = calculateLevel(userStats.xpCount);
+
+		// Define milestones
+		const milestones = [100, 1000, 10000, 100000, 1000000];
+
+		// Check if we hit a milestone
+		const milestoneReached = milestones.find((m) => userStats.messagesCount < m && newMessageCount >= m);
+		const rewardEarned = !!milestoneReached;
+
+		// Initialize default claim stats (for no reward scenario)
+		let claimStats = createDefaultClaimStats(currentLevel);
+		let levelProgress = getLevelProgress(userStats.xpCount);
+		let message = `Message count: ${newMessageCount}`;
+
+		return await context.db.transaction(async (db) => {
+			// First update the message count
+			const [updatedStats] = await db
+				.update(userStatsTable)
+				.set({
+					messagesCount: newMessageCount,
+					lastMessageAt: new Date(),
+					updatedAt: new Date(),
+				})
+				.where(eq(userStatsTable.userId, input.userId))
+				.returning();
+
+			if (!updatedStats) {
+				throw errors.DATABASE_ERROR();
+			}
+
+			let finalStats = updatedStats;
+			let levelUp: { oldLevel: number; newLevel: number; bonusCoins: number } | undefined;
+
+			// If milestone reached, grant rewards
+			if (rewardEarned && milestoneReached) {
+				// Build claim stats for milestone reward
+				const { createMessageMilestoneStats } = await import("../../utils/stats-utils.ts");
+				claimStats = createMessageMilestoneStats(currentLevel, milestoneReached);
+				const coinsReward = claimStats.earnedTotalCoins;
+				const xpReward = claimStats.earnedTotalXp;
+
+				// Calculate new XP and check for level up
+				const newXp = updatedStats.xpCount + xpReward;
+				levelUp = processLevelUp(updatedStats.xpCount, newXp);
+
+				// Update coins and XP
+				const [rewardedStats] = await db
+					.update(userStatsTable)
+					.set({
+						coinsCount: updatedStats.coinsCount + coinsReward + (levelUp?.bonusCoins ?? 0),
+						xpCount: newXp,
+						updatedAt: new Date(),
+					})
+					.where(eq(userStatsTable.userId, input.userId))
+					.returning();
+
+				if (!rewardedStats) {
+					throw errors.DATABASE_ERROR();
+				}
+
+				finalStats = rewardedStats;
+
+				// Log the reward
+				const logData: InsertDbUserStatsLog = {
+					userId: input.userId,
+					activityType: "message_milestone",
+					notes: `Message milestone reached: ${milestoneReached.toLocaleString()} messages${levelUp ? ` (LEVEL UP to ${levelUp.newLevel}!)` : ""}`,
+					xpEarned: xpReward,
+					coinsEarned: coinsReward + (levelUp?.bonusCoins ?? 0),
+				};
+
+				await db.insert(userStatsLogTable).values(logData);
+
+				// Update level progress with new XP
+				levelProgress = getLevelProgress(newXp);
+
+				message = `Message milestone reached: ${milestoneReached.toLocaleString()} messages! Earned ${coinsReward} coins and ${xpReward} XP!${levelUp ? ` You leveled up to level ${levelUp.newLevel} and earned ${levelUp.bonusCoins} bonus coins!` : ""}`;
+			}
+
+			return {
+				updatedStats: finalStats,
+				milestoneReached,
+				rewardEarned,
+				message,
+				claimStats,
+				levelProgress,
+				levelUp,
+			};
+		});
+	});
+
+/**
  * Get server tag streak info for a user
  */
 export const getServerTagStreak = base

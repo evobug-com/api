@@ -16,6 +16,7 @@ import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions }
 // import { createSession, deleteSession } from "./auth";
 // Stats & Rewards System
 import {
+	checkMessageMilestone,
 	checkServerTagStreak,
 	claimDaily,
 	claimWork,
@@ -108,6 +109,9 @@ export const router = {
 			serverTag: {
 				check: checkServerTagStreak,
 				get: getServerTagStreak,
+			},
+			messages: {
+				checkMilestone: checkMessageMilestone,
 			},
 			top: leaderboard,
 			//         get: userStats, // GET /users/{userId}/stats

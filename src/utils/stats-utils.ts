@@ -252,5 +252,42 @@ export function createServerTagMilestoneStats(currentLevel: number, milestoneNum
 	};
 }
 
+/**
+ * Create claim stats for message milestone rewards
+ */
+export function createMessageMilestoneStats(currentLevel: number, milestoneCount: number): RewardStats {
+	const baseCoins = 1000;
+	const baseXp = 500;
+
+	// Determine phase multiplier based on milestone reached - exponential scaling
+	let phaseMultiplier = 1;
+	if (milestoneCount === 100) phaseMultiplier = 1;
+	else if (milestoneCount === 1000) phaseMultiplier = 5;
+	else if (milestoneCount === 10000) phaseMultiplier = 15;
+	else if (milestoneCount === 100000) phaseMultiplier = 50;
+	else if (milestoneCount === 1000000) phaseMultiplier = 200;
+
+	const coinsReward = baseCoins * phaseMultiplier;
+	const xpReward = baseXp * phaseMultiplier;
+
+	return {
+		baseCoins,
+		baseXp,
+		currentLevel,
+		levelCoinsBonus: 0,
+		levelXpBonus: 0,
+		streakCoinsBonus: 0,
+		streakXpBonus: 0,
+		milestoneCoinsBonus: coinsReward - baseCoins,
+		milestoneXpBonus: xpReward - baseXp,
+		boostMultiplier: 1,
+		boostCoinsBonus: 0,
+		boostXpBonus: 0,
+		isMilestone: true,
+		earnedTotalCoins: coinsReward,
+		earnedTotalXp: xpReward,
+	};
+}
+
 // Note: checkCooldown function removed as it's not needed with the current implementation
 // Cooldown checking is now handled directly in the handler functions
