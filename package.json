@@ -30,7 +30,6 @@
 		"@orpc/client": "^1.8.9",
 		"@orpc/contract": "^1.8.9",
 		"@orpc/server": "^1.8.9",
-		"dotenv": "^17.2.2",
 		"drizzle-orm": "alternation-engine",
 		"drizzle-zod": "alternation-engine",
 		"pg": "^8.16.3",

@@ -8,7 +8,6 @@
         "@orpc/client": "^1.8.9",
         "@orpc/contract": "^1.8.9",
         "@orpc/server": "^1.8.9",
-        "dotenv": "^17.2.2",
         "drizzle-orm": "alternation-engine",
         "drizzle-zod": "alternation-engine",
         "pg": "^8.16.3",
@@ -228,8 +227,6 @@
     "default-browser-id": ["default-browser-id@5.0.0", "", {}, "sha512-A6p/pu/6fyBcA1TRz/GqWYPViplrftcW2gZC9q79ngNCKAeR/X3gcEdXQHl4KNXV+3wgIJ1CPkJQ3IHM6lcsyA=="],
 
     "define-lazy-prop": ["define-lazy-prop@3.0.0", "", {}, "sha512-N+MeXYoqr3pOgn8xfyRPREN7gHakLYjhsHhWGT3fWAiL4IkAt0iDw14QiiEm2bE30c5XX5q0FtAA3CK5f9/BUg=="],
-
-    "dotenv": ["dotenv@17.2.2", "", {}, "sha512-Sf2LSQP+bOlhKWWyhFsn0UsfdK/kCWRv1iuA2gXAwt3dyNabr6QSj00I2V10pidqz69soatm9ZwZvpQMTIOd5Q=="],
 
     "drizzle-kit": ["drizzle-kit@1.0.0-beta.1-c4ae133", "", { "dependencies": { "@drizzle-team/brocli": "^0.10.2", "@esbuild-kit/esm-loader": "^2.5.5", "@js-temporal/polyfill": "^0.5.1", "esbuild": "^0.25.4", "esbuild-register": "^3.5.0" }, "bin": { "drizzle-kit": "bin.cjs" } }, "sha512-c/wXBKzKyFUqgFp1VN5PprnHRpHOrb1rl1ZWZuZbIDLYleE5UCftqxeUt38mvy50+QpOF+oIKUlG0H1zsDE6Mw=="],
 
