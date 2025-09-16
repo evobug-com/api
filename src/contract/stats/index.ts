@@ -9,7 +9,14 @@ import {
 	userStatsTable,
 	usersTable,
 } from "../../db/schema.ts";
-import { calculateLevel, calculateRewards, getLevelProgress } from "../../utils/stats-utils.ts";
+import {
+	calculateLevel,
+	calculateRewards,
+	createDefaultClaimStats,
+	createServerTagMilestoneStats,
+	getLevelProgress,
+	processLevelUp,
+} from "../../utils/stats-utils.ts";
 import { base } from "../shared/os.ts";
 
 export const levelProgressSchema = z.object({
@@ -410,18 +417,9 @@ export const claimDaily = base
 		// Calculate new totals
 		const newCoins = user.stats.coinsCount + rewards.earnedTotalCoins;
 		const newXp = user.stats.xpCount + rewards.earnedTotalXp;
-		const newLevel = calculateLevel(newXp);
 
 		// Check for level up
-		let levelUp: { oldLevel: number; newLevel: number; bonusCoins: number } | undefined;
-		if (newLevel > currentLevel) {
-			const levelUpBonus = (newLevel - currentLevel) * 100;
-			levelUp = {
-				oldLevel: currentLevel,
-				newLevel: newLevel,
-				bonusCoins: levelUpBonus,
-			};
-		}
+		const levelUp = processLevelUp(user.stats.xpCount, newXp);
 
 		return await context.db.transaction(async (db) => {
 			// Update user stats including boost count
@@ -558,18 +556,9 @@ export const claimWork = base
 		const newCoins = userStats.coinsCount + rewards.earnedTotalCoins;
 		const newXp = userStats.xpCount + rewards.earnedTotalXp;
 		const newWorkCount = userStats.workCount + 1;
-		const newLevel = calculateLevel(newXp);
 
 		// Check for level up
-		let levelUp: { oldLevel: number; newLevel: number; bonusCoins: number } | undefined;
-		if (newLevel > currentLevel) {
-			const levelUpBonus = (newLevel - currentLevel) * 100;
-			levelUp = {
-				oldLevel: currentLevel,
-				newLevel: newLevel,
-				bonusCoins: levelUpBonus,
-			};
-		}
+		const levelUp = processLevelUp(userStats.xpCount, newXp);
 
 		return await context.db.transaction(async (db) => {
 			const [updatedStats] = await db
@@ -642,6 +631,31 @@ export const checkServerTagStreak = base
 			rewardEarned: z.boolean(),
 			milestoneReached: z.number().optional(),
 			message: z.string(),
+			levelUp: z
+				.object({
+					newLevel: z.number(),
+					oldLevel: z.number(),
+					bonusCoins: z.number(),
+				})
+				.optional(),
+			claimStats: z.object({
+				baseCoins: z.number(),
+				baseXp: z.number(),
+				currentLevel: z.number(),
+				levelCoinsBonus: z.number(),
+				levelXpBonus: z.number(),
+				streakCoinsBonus: z.number(),
+				streakXpBonus: z.number(),
+				milestoneCoinsBonus: z.number(),
+				milestoneXpBonus: z.number(),
+				boostMultiplier: z.number(),
+				boostCoinsBonus: z.number(),
+				boostXpBonus: z.number(),
+				isMilestone: z.boolean(),
+				earnedTotalCoins: z.number(),
+				earnedTotalXp: z.number(),
+			}),
+			levelProgress: levelProgressSchema,
 		}),
 	)
 	.handler(async ({ input, context, errors }) => {
@@ -658,6 +672,13 @@ export const checkServerTagStreak = base
 		// Check if it's been at least 12 hours since last check
 		const now = new Date();
 		const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+		const currentLevel = calculateLevel(userStats.xpCount);
+
+		// Initialize default claim stats (for no reward scenario)
+		let claimStats = createDefaultClaimStats(currentLevel);
+
+		// Initialize level progress with current stats
+		let levelProgress = getLevelProgress(userStats.xpCount);
 
 		if (userStats.lastServerTagCheck && userStats.lastServerTagCheck > twelveHoursAgo) {
 			return {
@@ -665,6 +686,8 @@ export const checkServerTagStreak = base
 				streakChanged: false,
 				rewardEarned: false,
 				message: "Server tag already checked recently",
+				claimStats,
+				levelProgress,
 			};
 		}
 
@@ -728,53 +751,63 @@ export const checkServerTagStreak = base
 				throw errors.DATABASE_ERROR();
 			}
 
+			let finalStats = updatedStats;
+			let levelUp: { oldLevel: number; newLevel: number; bonusCoins: number } | undefined;
+
 			// If milestone reached, grant rewards
 			if (rewardEarned && milestoneReached) {
-				// Calculate rewards based on milestone with increased base and cap
-				const baseCoins = 250; // Increased from 100
-				const baseXp = 100; // Increased from 50
-				const milestoneMultiplier = Math.min(milestoneReached / 5, 10); // Cap at 10x
+				// Build claim stats for milestone reward
+				claimStats = createServerTagMilestoneStats(currentLevel, milestoneReached);
+				const coinsReward = claimStats.earnedTotalCoins;
+				const xpReward = claimStats.earnedTotalXp;
 
-				const coinsReward = baseCoins * milestoneMultiplier;
-				const xpReward = baseXp * milestoneMultiplier;
+				// Calculate new XP and check for level up
+				const newXp = updatedStats.xpCount + xpReward;
+				levelUp = processLevelUp(updatedStats.xpCount, newXp);
 
 				// Update coins and XP
 				const [rewardedStats] = await db
 					.update(userStatsTable)
 					.set({
-						coinsCount: updatedStats.coinsCount + coinsReward,
-						xpCount: updatedStats.xpCount + xpReward,
+						coinsCount: updatedStats.coinsCount + coinsReward + (levelUp?.bonusCoins ?? 0),
+						xpCount: newXp,
 						updatedAt: now,
 					})
 					.where(eq(userStatsTable.userId, input.userId))
 					.returning();
 
+				if (!rewardedStats) {
+					throw errors.DATABASE_ERROR();
+				}
+
+				finalStats = rewardedStats;
+
 				// Log the reward
 				const logData: InsertDbUserStatsLog = {
 					userId: input.userId,
 					activityType: "server_tag_milestone",
-					notes: `Server tag streak milestone: ${milestoneReached} days`,
+					notes: `Server tag streak milestone: ${milestoneReached} days${levelUp ? ` (LEVEL UP to ${levelUp.newLevel}!)` : ""}`,
 					xpEarned: xpReward,
-					coinsEarned: coinsReward,
+					coinsEarned: coinsReward + (levelUp?.bonusCoins ?? 0),
 				};
 
 				await db.insert(userStatsLogTable).values(logData);
 
-				return {
-					updatedStats: rewardedStats || updatedStats,
-					streakChanged,
-					rewardEarned,
-					milestoneReached,
-					message: `${message} Earned ${coinsReward} coins and ${xpReward} XP!`,
-				};
+				// Update level progress with new XP
+				levelProgress = getLevelProgress(newXp);
+
+				message = `${message} Earned ${coinsReward} coins and ${xpReward} XP!${levelUp ? ` You leveled up to level ${levelUp.newLevel} and earned ${levelUp.bonusCoins} bonus coins!` : ""}`;
 			}
 
 			return {
-				updatedStats,
+				updatedStats: finalStats,
 				streakChanged,
 				rewardEarned,
 				milestoneReached,
 				message,
+				levelUp,
+				claimStats,
+				levelProgress,
 			};
 		});
 	});

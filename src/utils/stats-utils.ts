@@ -177,5 +177,80 @@ export function calculateRewards(
 	};
 }
 
+/**
+ * Check for level up and calculate bonus coins
+ */
+export function processLevelUp(
+	oldXp: number,
+	newXp: number,
+): { oldLevel: number; newLevel: number; bonusCoins: number } | undefined {
+	const oldLevel = calculateLevel(oldXp);
+	const newLevel = calculateLevel(newXp);
+
+	if (newLevel > oldLevel) {
+		const bonusCoins = (newLevel - oldLevel) * 100;
+		return {
+			oldLevel,
+			newLevel,
+			bonusCoins,
+		};
+	}
+
+	return undefined;
+}
+
+/**
+ * Create default claim stats for scenarios with no rewards
+ */
+export function createDefaultClaimStats(currentLevel: number): RewardStats {
+	return {
+		baseCoins: 0,
+		baseXp: 0,
+		currentLevel,
+		levelCoinsBonus: 0,
+		levelXpBonus: 0,
+		streakCoinsBonus: 0,
+		streakXpBonus: 0,
+		milestoneCoinsBonus: 0,
+		milestoneXpBonus: 0,
+		boostMultiplier: 1,
+		boostCoinsBonus: 0,
+		boostXpBonus: 0,
+		isMilestone: false,
+		earnedTotalCoins: 0,
+		earnedTotalXp: 0,
+	};
+}
+
+/**
+ * Create claim stats for server tag milestone rewards
+ */
+export function createServerTagMilestoneStats(currentLevel: number, milestoneNumber: number): RewardStats {
+	const baseCoins = 250;
+	const baseXp = 100;
+	const milestoneMultiplier = Math.min(milestoneNumber / 5, 10); // Cap at 10x
+
+	const coinsReward = baseCoins * milestoneMultiplier;
+	const xpReward = baseXp * milestoneMultiplier;
+
+	return {
+		baseCoins,
+		baseXp,
+		currentLevel,
+		levelCoinsBonus: 0,
+		levelXpBonus: 0,
+		streakCoinsBonus: 0,
+		streakXpBonus: 0,
+		milestoneCoinsBonus: coinsReward - baseCoins,
+		milestoneXpBonus: xpReward - baseXp,
+		boostMultiplier: 1,
+		boostCoinsBonus: 0,
+		boostXpBonus: 0,
+		isMilestone: true,
+		earnedTotalCoins: coinsReward,
+		earnedTotalXp: xpReward,
+	};
+}
+
 // Note: checkCooldown function removed as it's not needed with the current implementation
 // Cooldown checking is now handled directly in the handler functions
