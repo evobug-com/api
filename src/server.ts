@@ -1,12 +1,14 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import { CORSPlugin } from "@orpc/server/plugins";
 import { router } from "./contract/router.ts";
-import "dotenv/config";
+import dotenv from "dotenv";
 import {type BunSQLDatabase, drizzle} from "drizzle-orm/bun-sql";
 import { createTestDatabase } from "./contract/shared/test-utils.ts";
 import { relations } from "./db/relations.ts";
 import type { DbUser } from "./db/schema.ts";
 import * as schema from "./db/schema.ts";
+
+dotenv.config();
 
 // env variable USE_TEMP_DATABASE can be set to "true" or switch --temp-database to use a temporary in-memory database
 const isTempDatabase = process.env.USE_TEMP_DATABASE === "true" || Bun.argv.includes("--temp-database");
