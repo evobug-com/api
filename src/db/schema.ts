@@ -380,7 +380,7 @@ export const productsTable = pgTable(
 		imageUrl: varchar({ length: 500 }),
 
 		// JSONB for sizes
-		sizes: jsonb().$type<string[]>().default(sql`'["S","M","L","XL","XXL"]'::jsonb`),
+		sizes: jsonb().$type<string[]>(),
 
 		maxPerUser: integer().default(1),
 
@@ -408,6 +408,11 @@ export const updateProductsSchema = createUpdateSchema(productsTable);
 export type DbProduct = typeof productsTable.$inferSelect;
 export type InsertDbProduct = typeof productsTable.$inferInsert;
 
+
+// ============================================================================
+// MESSAGES LOGS TABLE
+// ============================================================================
+
 export const messagesLogsTable = pgTable(
 	"messages_logs",
 	{
@@ -418,7 +423,7 @@ export const messagesLogsTable = pgTable(
 		platform: varchar({ length: 255 }).notNull(), // discord or guilded
 		channelId: varchar({ length: 255 }).notNull(),
 		content: text().notNull(),
-		editedContents: jsonb().$type<string[]>().default(sql`'[]'::jsonb`), // store previous edits
+		editedContents: jsonb().$type<string[]>().default([]), // store previous edits
 		editCount: integer().notNull().default(0),
 		createdAt: timestamptz().defaultNow().notNull(),
 		updatedAt: timestamptz().defaultNow().notNull(),
@@ -436,10 +441,6 @@ export const updateMessagesLogsSchema = createUpdateSchema(messagesLogsTable);
 
 export type DbMessageLog = typeof messagesLogsTable.$inferSelect;
 export type InsertDbMessageLog = typeof messagesLogsTable.$inferInsert;
-
-export type DbMessageLogWithRelations = DbMessageLog & {
-	user: DbUser;
-};
 
 // ============================================================================
 // EVENTS TABLE - Event definitions
