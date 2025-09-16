@@ -1,4 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
+import { pushSchema } from "drizzle-kit/api-postgres";
 import { sql } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type { PgDatabase } from "drizzle-orm/pg-core/db";
@@ -7,7 +8,6 @@ import type { PgliteDatabase } from "drizzle-orm/pglite/driver";
 import { relations } from "../../db/relations.ts";
 import type { DbUser } from "../../db/schema.ts";
 import * as schema from "../../db/schema.ts";
-import { pushSchema } from "drizzle-kit/api-postgres";
 
 let client!: PGlite;
 // biome-ignore lint/suspicious/noExplicitAny: For testing only

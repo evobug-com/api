@@ -1,10 +1,10 @@
 import { os } from "@orpc/server";
+import type { HeadersInit } from "bun";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import { z } from "zod";
 import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema.ts";
 import type { DbUser } from "../../db/schema.ts";
-import type { HeadersInit } from "bun";
 
 export const base = os
 	.$context<{
