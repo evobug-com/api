@@ -2,7 +2,6 @@ import { RPCHandler } from "@orpc/server/fetch";
 import { CORSPlugin } from "@orpc/server/plugins";
 import { router } from "./contract/router.ts";
 import "dotenv/config";
-import type { IncomingHttpHeaders } from "node:http";
 import {type BunSQLDatabase, drizzle} from "drizzle-orm/bun-sql";
 import { createTestDatabase } from "./contract/shared/test-utils.ts";
 import { relations } from "./db/relations.ts";
@@ -47,7 +46,7 @@ const server = Bun.serve({
 	port: PORT,
 	async fetch(request: Request) {
 		const { matched, response } = await handler.handle(request, {
-			context: { headers: request.headers as unknown as IncomingHttpHeaders, db, user: null as unknown as DbUser },
+			context: { headers: request.headers, db, user: null as unknown as DbUser },
 		});
 
 		if (matched) {
