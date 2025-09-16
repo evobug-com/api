@@ -11,6 +11,7 @@ import * as schema from "./db/schema.ts";
 
 // env variable USE_TEMP_DATABASE can be set to "true" or switch --temp-database to use a temporary in-memory database
 const isTempDatabase = process.env.USE_TEMP_DATABASE === "true" || Bun.argv.includes("--temp-database");
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
 if (process.env.DATABASE_URL === undefined && !isTempDatabase)
 	throw new Error("DATABASE_URL environment variable is not set. Please set it to your database URL.");
@@ -43,7 +44,7 @@ const handler = new RPCHandler(router, {
 });
 
 const server = Bun.serve({
-	port: 3001,
+	port: PORT,
 	async fetch(request: Request) {
 		const { matched, response } = await handler.handle(request, {
 			context: { headers: request.headers as unknown as IncomingHttpHeaders, db, user: null as unknown as DbUser },
