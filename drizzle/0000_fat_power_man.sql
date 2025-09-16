@@ -1,6 +1,5 @@
 -- Current sql file was generated after introspecting the database
--- If you want to run this migration please uncomment this code before executing migrations
-/*
+-- Migration uncommented for execution
 CREATE TYPE "public"."order_status" AS ENUM('pending', 'completed', 'cancelled', 'refunded');--> statement-breakpoint
 CREATE TYPE "public"."review_outcome" AS ENUM('APPROVED', 'REJECTED', 'PENDING');--> statement-breakpoint
 CREATE TYPE "public"."severity" AS ENUM('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');--> statement-breakpoint
@@ -204,4 +203,3 @@ CREATE UNIQUE INDEX "event_participants_event_id_user_id_idx" ON "event_particip
 CREATE INDEX "event_participants_userId_idx" ON "event_participants" USING btree ("userId" int4_ops);--> statement-breakpoint
 CREATE INDEX "users_discord_idx" ON "users" USING btree ("discordId" text_ops);--> statement-breakpoint
 CREATE INDEX "users_guilded_idx" ON "users" USING btree ("guildedId" text_ops);
-*/
