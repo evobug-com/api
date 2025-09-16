@@ -4,6 +4,12 @@
  * Each domain is properly separated by concern
  */
 
+import {
+	createMessageLog,
+	updateMessageDeletedStatus,
+	updateMessageEditedStatus,
+	updateMessageLog,
+} from "./message-logs";
 // Standing Management
 import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions } from "./standing";
 // Authentication & Session Management
@@ -212,14 +218,13 @@ export const router = {
 		},
 	},
 
-	//
-	// // Message logging endpoints
-	// messageLogs: {
-	//     get: messageLog, // GET /message-logs/{messageId}
-	//     create: createMessageLog, // POST /message-logs
-	//     update: updateMessageLog, // PATCH /message-logs/{messageId}
-	//     stats: messageLogStats, // GET /message-logs/stats
-	//     updateDeletedStatus: updateMessageDeletedStatus, // PUT /message-logs/{messageId}/deleted
-	//     updateEditedStatus: updateMessageEditedStatus, // PUT /message-logs/{messageId}/edited
-	// },
+	// Message logging endpoints
+	messageLogs: {
+		// get: messageLog, // GET /message-logs/{messageId}
+		create: createMessageLog, // POST /message-logs
+		update: updateMessageLog, // PATCH /message-logs/{messageId}
+		// stats: messageLogStats, // GET /message-logs/stats
+		updateDeletedStatus: updateMessageDeletedStatus, // PUT /message-logs/{messageId}/deleted
+		updateEditedStatus: updateMessageEditedStatus, // PUT /message-logs/{messageId}/edited
+	},
 };

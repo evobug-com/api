@@ -408,18 +408,27 @@ export const updateProductsSchema = createUpdateSchema(productsTable);
 export type DbProduct = typeof productsTable.$inferSelect;
 export type InsertDbProduct = typeof productsTable.$inferInsert;
 
-export const messagesLogsTable = pgTable("messages_logs", {
-	id: serial().primaryKey(),
+export const messagesLogsTable = pgTable(
+	"messages_logs",
+	{
+		id: serial().primaryKey(),
 
-	userId: integer(), // can be linked later
-	platform: varchar({ length: 255 }).notNull(), // discord or guilded
-	channelId: varchar({ length: 255 }).notNull(),
-	content: text().notNull(),
-	editCount: integer().notNull().default(0),
-	createdAt: timestamptz().defaultNow().notNull(),
-	updatedAt: timestamptz().defaultNow().notNull(),
-	deletedAt: timestamptz(),
-});
+		userId: integer(), // can be linked later
+		messageId: varchar({ length: 255 }).notNull(), // unique message id from platform
+		platform: varchar({ length: 255 }).notNull(), // discord or guilded
+		channelId: varchar({ length: 255 }).notNull(),
+		content: text().notNull(),
+		editedContents: jsonb().$type<string[]>().default(sql`'[]'::jsonb`), // store previous edits
+		editCount: integer().notNull().default(0),
+		createdAt: timestamptz().defaultNow().notNull(),
+		updatedAt: timestamptz().defaultNow().notNull(),
+		deletedAt: timestamptz(),
+	},
+	(table) => [
+		// Unique constraint on messageId + platform combination
+		index("messages_logs_messageId_platform_idx").on(table.messageId, table.platform),
+	],
+);
 
 export const messagesLogsSchema = createSelectSchema(messagesLogsTable);
 export const insertMessagesLogsSchema = createInsertSchema(messagesLogsTable);
