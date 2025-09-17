@@ -243,9 +243,7 @@ export const logCaptchaAttempt = base
 		}
 
 		// Log to console for monitoring
-		console.log(
-			`[CAPTCHA] User ${input.userId} - ${logDetails.join(" | ")}`,
-		);
+		console.log(`[CAPTCHA] User ${input.userId} - ${logDetails.join(" | ")}`);
 
 		// Log the captcha attempt
 		const logData: InsertDbCaptchaLog = {
