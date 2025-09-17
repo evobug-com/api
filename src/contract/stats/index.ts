@@ -166,7 +166,7 @@ export const leaderboard = base
 	});
 
 /**
- * Log captcha attempt
+ * Log captcha attempt with detailed reasoning
  */
 export const logCaptchaAttempt = base
 	.input(
@@ -178,6 +178,11 @@ export const logCaptchaAttempt = base
 			responseTime: z.number(), // in milliseconds
 			clientIp: z.string().optional(),
 			userAgent: z.string().optional(),
+			// New fields for tracking why captcha was shown
+			triggerReason: z.string().optional(), // Why captcha was shown (e.g., "suspicious_score", "periodic_check", "recent_failure")
+			suspiciousScore: z.number().optional(), // User's suspicious score at time of captcha
+			claimCount: z.number().optional(), // Number of claims before this captcha
+			difficulty: z.enum(["easy", "medium", "hard"]).optional(),
 		}),
 	)
 	.errors({
@@ -189,16 +194,58 @@ export const logCaptchaAttempt = base
 		z.object({
 			logged: z.boolean(),
 			isSuspicious: z.boolean(),
+			suspiciousReasons: z.array(z.string()),
 		}),
 	)
 	.handler(async ({ input, context, errors }) => {
+		const suspiciousReasons: string[] = [];
+
 		// Check if response time is suspiciously fast
 		const minTimes = {
 			math: 2000,
 			emoji: 1000,
 			word: 3000,
 		};
-		const isSuspicious = input.responseTime < minTimes[input.captchaType];
+		const isTooFast = input.responseTime < minTimes[input.captchaType];
+		if (isTooFast) {
+			suspiciousReasons.push(`Response too fast (${input.responseTime}ms < ${minTimes[input.captchaType]}ms minimum)`);
+		}
+
+		// Check for other suspicious patterns
+		if (input.responseTime < 500) {
+			suspiciousReasons.push("Inhuman response time (<500ms)");
+		}
+
+		if (!input.success && input.responseTime < 1000) {
+			suspiciousReasons.push("Failed captcha with very fast response");
+		}
+
+		if (input.suspiciousScore && input.suspiciousScore > 70) {
+			suspiciousReasons.push(`High suspicious score (${input.suspiciousScore})`);
+		}
+
+		const isSuspicious = suspiciousReasons.length > 0;
+
+		// Build detailed log message
+		const logDetails = [
+			`Captcha type: ${input.captchaType}`,
+			`Command: ${input.command}`,
+			`Success: ${input.success}`,
+			`Response time: ${input.responseTime}ms`,
+		];
+
+		if (input.triggerReason) logDetails.push(`Trigger reason: ${input.triggerReason}`);
+		if (input.suspiciousScore !== undefined) logDetails.push(`Suspicious score: ${input.suspiciousScore}`);
+		if (input.claimCount !== undefined) logDetails.push(`Claim count: ${input.claimCount}`);
+		if (input.difficulty) logDetails.push(`Difficulty: ${input.difficulty}`);
+		if (suspiciousReasons.length > 0) {
+			logDetails.push(`Suspicious patterns: ${suspiciousReasons.join(", ")}`);
+		}
+
+		// Log to console for monitoring
+		console.log(
+			`[CAPTCHA] User ${input.userId} - ${logDetails.join(" | ")}`,
+		);
 
 		// Log the captcha attempt
 		const logData: InsertDbCaptchaLog = {
@@ -216,6 +263,7 @@ export const logCaptchaAttempt = base
 			return {
 				logged: true,
 				isSuspicious,
+				suspiciousReasons,
 			};
 		} catch (error) {
 			console.error("Error logging captcha attempt:", error);
