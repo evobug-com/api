@@ -449,7 +449,6 @@ export const updateProductsSchema = createUpdateSchema(productsTable);
 export type DbProduct = typeof productsTable.$inferSelect;
 export type InsertDbProduct = typeof productsTable.$inferInsert;
 
-
 // ============================================================================
 // MESSAGES LOGS TABLE
 // ============================================================================

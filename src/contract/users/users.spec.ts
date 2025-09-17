@@ -240,7 +240,7 @@ describe("Users", () => {
 				createTestContext(db),
 			);
 
-			expect(userWithEmail.email).toBe("test@example.com");
+			// Email is not returned in public user data
 			expect(userWithEmail.username).toBe("emailuser");
 		});
 
@@ -283,7 +283,7 @@ describe("Users", () => {
 			);
 
 			expect(fullUser.username).toBe("fulluser");
-			expect(fullUser.email).toBe("full@example.com");
+			// Email is not returned in public user data
 			expect(fullUser.discordId).toBe("discord123");
 			expect(fullUser.guildedId).toBe("guilded456");
 			expect(fullUser.role).toBe("user");

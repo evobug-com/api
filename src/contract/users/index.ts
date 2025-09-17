@@ -27,11 +27,7 @@ export const createUser = base
 			})
 			.partial(),
 	)
-	.output(
-		userSchema.omit({
-			password: true,
-		}),
-	)
+	.output(publicUserSchema)
 	.errors({
 		USER_EXISTS: {
 			message: "User with provided details already exists",
@@ -69,7 +65,7 @@ export const createUser = base
 		if (input.guildedId) userInput.guildedId = input.guildedId;
 		if (input.discordId) userInput.discordId = input.discordId;
 
-		const { password: _, ...selectableFields } = getTableColumns(usersTable);
+		const { password: _, email: __, ...selectableFields } = getTableColumns(usersTable);
 
 		return await context.db.transaction(async (db) => {
 			const insertedUser = (await db.insert(usersTable).values(userInput).returning(selectableFields))?.[0] ?? null;
@@ -117,7 +113,7 @@ export const getUser = base
 			});
 		}
 
-		const { password: _, ...userFields } = getTableColumns(usersTable);
+		const { password: _, email: __, ...userFields } = getTableColumns(usersTable);
 
 		const users = await context.db.select(userFields).from(usersTable).where(whereCondition).limit(1);
 		if (users.length <= 0) {

@@ -500,7 +500,7 @@ describe("Message Logs", () => {
 
 			// Make multiple edits
 			const edits = ["Version 2", "Version 3", "Version 4", "Version 5"];
-			let lastUpdate;
+			let lastUpdate: DbMessageLog | null = null;
 
 			for (const newContent of edits) {
 				lastUpdate = await call(
@@ -514,9 +514,9 @@ describe("Message Logs", () => {
 				);
 			}
 
-			expect(lastUpdate!.content).toBe("Version 5");
-			expect(lastUpdate!.editCount).toBe(4);
-			expect(lastUpdate!.editedContents).toEqual(["Version 1", "Version 2", "Version 3", "Version 4"]);
+			expect(lastUpdate?.content).toBe("Version 5");
+			expect(lastUpdate?.editCount).toBe(4);
+			expect(lastUpdate?.editedContents).toEqual(["Version 1", "Version 2", "Version 3", "Version 4"]);
 		});
 	});
 

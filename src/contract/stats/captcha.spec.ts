@@ -1,14 +1,8 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
-import {
-	captchaLogsTable,
-	type DbUser,
-	type InsertDbCaptchaLog,
-	userStatsTable,
-	usersTable,
-} from "../../db/schema.ts";
+import { captchaLogsTable, type DbUser, type InsertDbCaptchaLog, userStatsTable, usersTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser } from "../users";
 import {
@@ -21,7 +15,7 @@ import {
 const db = await createTestDatabase();
 
 describe("Captcha API Endpoints", () => {
-	let testUser: DbUser;
+	let testUser: Omit<DbUser, "password" | "email">;
 
 	beforeEach(async () => {
 		// Create fresh test user for each test
@@ -150,18 +144,14 @@ describe("Captcha API Endpoints", () => {
 
 			// Verify database update
 			const stats = await db.select().from(userStatsTable).where(eq(userStatsTable.userId, testUser.id));
-			expect(stats[0].failedCaptchaCount).toBe(1);
-			expect(stats[0].suspiciousBehaviorScore).toBe(10); // Should increase by 10
+			expect(stats[0]?.failedCaptchaCount).toBe(1);
+			expect(stats[0]?.suspiciousBehaviorScore).toBe(10); // Should increase by 10
 		});
 
 		it("should lock economy after 5 failed attempts", async () => {
 			// Fail 4 times first
 			for (let i = 0; i < 4; i++) {
-				await call(
-					updateFailedCaptchaCount,
-					{ userId: testUser.id },
-					createTestContext(db, testUser),
-				);
+				await call(updateFailedCaptchaCount, { userId: testUser.id }, createTestContext(db, testUser));
 			}
 
 			// 5th failure should trigger lock
@@ -179,11 +169,11 @@ describe("Captcha API Endpoints", () => {
 
 			// Verify economy ban is set
 			const stats = await db.select().from(userStatsTable).where(eq(userStatsTable.userId, testUser.id));
-			expect(stats[0].economyBannedUntil).toBeDefined();
-			expect(stats[0].economyBannedUntil).toBeInstanceOf(Date);
+			expect(stats[0]?.economyBannedUntil).toBeDefined();
+			expect(stats[0]?.economyBannedUntil).toBeInstanceOf(Date);
 
 			// Check ban is for 24 hours
-			const banTime = stats[0].economyBannedUntil?.getTime() || 0;
+			const banTime = stats[0]?.economyBannedUntil?.getTime() || 0;
 			const expectedBanTime = Date.now() + 24 * 60 * 60 * 1000;
 			expect(Math.abs(banTime - expectedBanTime)).toBeLessThan(5000); // Within 5 seconds
 		});
@@ -205,7 +195,7 @@ describe("Captcha API Endpoints", () => {
 
 			// Verify score is capped at 100
 			const stats = await db.select().from(userStatsTable).where(eq(userStatsTable.userId, testUser.id));
-			expect(stats[0].suspiciousBehaviorScore).toBe(100);
+			expect(stats[0]?.suspiciousBehaviorScore).toBe(100);
 		});
 	});
 
@@ -282,9 +272,9 @@ describe("Captcha API Endpoints", () => {
 
 			// Verify 72-hour ban
 			const stats = await db.select().from(userStatsTable).where(eq(userStatsTable.userId, testUser.id));
-			expect(stats[0].economyBannedUntil).toBeDefined();
+			expect(stats[0]?.economyBannedUntil).toBeDefined();
 
-			const banTime = stats[0].economyBannedUntil?.getTime() || 0;
+			const banTime = stats[0]?.economyBannedUntil?.getTime() || 0;
 			const expectedBanTime = Date.now() + 72 * 60 * 60 * 1000;
 			expect(Math.abs(banTime - expectedBanTime)).toBeLessThan(5000);
 		});
@@ -380,7 +370,7 @@ describe("Captcha API Endpoints", () => {
 					command: i % 2 === 0 ? "work" : "daily",
 					success: i !== 2, // One failure
 					responseTime: 2500 + Math.floor(Math.random() * 3000), // Reasonable times
-					createdAt: new Date(Date.now() - 600000 + timings[i]),
+					createdAt: new Date(Date.now() - 600000 + timings[i]!),
 				};
 				await db.insert(captchaLogsTable).values(logData);
 			}
@@ -484,29 +474,17 @@ describe("Captcha API Endpoints", () => {
 
 				// Update failed count if failed
 				if (!attempt.success) {
-					await call(
-						updateFailedCaptchaCount,
-						{ userId: testUser.id },
-						createTestContext(db, testUser),
-					);
+					await call(updateFailedCaptchaCount, { userId: testUser.id }, createTestContext(db, testUser));
 				}
 
 				// Update suspicious score for fast responses
 				if (attempt.responseTime < 2000 && attempt.success) {
-					await call(
-						updateSuspiciousScore,
-						{ userId: testUser.id, increment: 20 },
-						createTestContext(db, testUser),
-					);
+					await call(updateSuspiciousScore, { userId: testUser.id, increment: 20 }, createTestContext(db, testUser));
 				}
 			}
 
 			// Check final patterns
-			const patterns = await call(
-				checkAutomationPatterns,
-				{ userId: testUser.id },
-				createTestContext(db, testUser),
-			);
+			const patterns = await call(checkAutomationPatterns, { userId: testUser.id }, createTestContext(db, testUser));
 
 			expect(patterns.instantResponseCount).toBe(3);
 			expect(patterns.hasFailedCaptchaPattern).toBe(false); // Only 2 failures, need 3+

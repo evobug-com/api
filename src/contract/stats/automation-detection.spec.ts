@@ -1,12 +1,7 @@
-import { describe, expect, it, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { call } from "@orpc/server";
-import { eq, and, gte, lte } from "drizzle-orm";
-import {
-	captchaLogsTable,
-	type DbUser,
-	type InsertDbCaptchaLog,
-	userStatsTable,
-} from "../../db/schema.ts";
+import { and, eq, gte, lte } from "drizzle-orm";
+import { captchaLogsTable, type DbUser, type InsertDbCaptchaLog, userStatsTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser } from "../users";
 import { checkAutomationPatterns, claimDaily, claimWork } from "./index.ts";
@@ -14,7 +9,7 @@ import { checkAutomationPatterns, claimDaily, claimWork } from "./index.ts";
 const db = await createTestDatabase();
 
 describe("Advanced Automation Pattern Detection", () => {
-	let testUser: DbUser;
+	let testUser: Omit<DbUser, "password" | "email">;
 
 	beforeEach(async () => {
 		testUser = await call(
@@ -43,11 +38,7 @@ describe("Advanced Automation Pattern Detection", () => {
 				});
 			}
 
-			const result = await call(
-				checkAutomationPatterns,
-				{ userId: testUser.id },
-				createTestContext(db, testUser),
-			);
+			const result = await call(checkAutomationPatterns, { userId: testUser.id }, createTestContext(db, testUser));
 
 			expect(result.hasTimingPattern).toBe(true);
 			expect(result.recommendation).toBe("challenge");
@@ -71,15 +62,11 @@ describe("Advanced Automation Pattern Detection", () => {
 					command: Math.random() > 0.5 ? "work" : "daily",
 					success: true,
 					responseTime: 3000 + Math.floor(Math.random() * 4000), // 3-7 seconds
-					createdAt: new Date(Date.now() - 600000 + intervals[i]),
+					createdAt: new Date(Date.now() - 600000 + intervals[i]!),
 				});
 			}
 
-			const result = await call(
-				checkAutomationPatterns,
-				{ userId: testUser.id },
-				createTestContext(db, testUser),
-			);
+			const result = await call(checkAutomationPatterns, { userId: testUser.id }, createTestContext(db, testUser));
 
 			expect(result.hasTimingPattern).toBe(false);
 		});
@@ -99,15 +86,11 @@ describe("Advanced Automation Pattern Detection", () => {
 					command: "work",
 					success: true,
 					responseTime: 3000,
-					createdAt: new Date(baseTime + i * baseInterval + deviations[i]),
+					createdAt: new Date(baseTime + i * baseInterval + deviations[i]!),
 				});
 			}
 
-			const result = await call(
-				checkAutomationPatterns,
-				{ userId: testUser.id },
-				createTestContext(db, testUser),
-			);
+			const result = await call(checkAutomationPatterns, { userId: testUser.id }, createTestContext(db, testUser));
 
 			// With deviations all under 5 seconds, pattern should be detected
 			expect(result.hasTimingPattern).toBe(true);
@@ -136,11 +119,7 @@ describe("Advanced Automation Pattern Detection", () => {
 				});
 			}
 
-			const result = await call(
-				checkAutomationPatterns,
-				{ userId: testUser.id },
-				createTestContext(db, testUser),
-			);
+			const result = await call(checkAutomationPatterns, { userId: testUser.id }, createTestContext(db, testUser));
 
 			// Instant responses are those < 500ms
 			expect(result.instantResponseCount).toBeGreaterThanOrEqual(5);
@@ -167,14 +146,11 @@ describe("Advanced Automation Pattern Detection", () => {
 			}
 
 			// Calculate standard deviation of response times
-			const logs = await db
-				.select()
-				.from(captchaLogsTable)
-				.where(eq(captchaLogsTable.userId, testUser.id));
+			const logs = await db.select().from(captchaLogsTable).where(eq(captchaLogsTable.userId, testUser.id));
 
 			const times = logs.map((l) => l.responseTime);
 			const avg = times.reduce((a, b) => a + b, 0) / times.length;
-			const variance = times.reduce((sum, time) => sum + Math.pow(time - avg, 2), 0) / times.length;
+			const variance = times.reduce((sum, time) => sum + (time - avg) ** 2, 0) / times.length;
 			const stdDev = Math.sqrt(variance);
 
 			// Bot should have very low standard deviation
@@ -254,7 +230,7 @@ describe("Advanced Automation Pattern Detection", () => {
 
 			const intervals: number[] = [];
 			for (let i = 1; i < workLogs.length; i++) {
-				intervals.push(workLogs[i].createdAt.getTime() - workLogs[i - 1].createdAt.getTime());
+				intervals.push(workLogs[i]!.createdAt.getTime() - workLogs[i - 1]!.createdAt.getTime());
 			}
 
 			// All intervals should be exactly 1 hour
@@ -276,10 +252,7 @@ describe("Advanced Automation Pattern Detection", () => {
 				});
 			}
 
-			const logs = await db
-				.select()
-				.from(captchaLogsTable)
-				.where(eq(captchaLogsTable.userId, testUser.id));
+			const logs = await db.select().from(captchaLogsTable).where(eq(captchaLogsTable.userId, testUser.id));
 
 			const successRate = logs.filter((l) => l.success).length / logs.length;
 			expect(successRate).toBe(1.0); // 100% success is suspicious for 20 attempts
@@ -312,11 +285,7 @@ describe("Advanced Automation Pattern Detection", () => {
 			// Check if pattern repeats
 			let patternMatches = 0;
 			for (let i = 0; i < logs.length - 3; i++) {
-				if (
-					logs[i].command === "work" &&
-					logs[i + 1].command === "work" &&
-					logs[i + 2].command === "daily"
-				) {
+				if (logs[i]?.command === "work" && logs[i + 1]?.command === "work" && logs[i + 2]?.command === "daily") {
 					patternMatches++;
 				}
 			}
@@ -349,10 +318,7 @@ describe("Advanced Automation Pattern Detection", () => {
 				}
 			}
 
-			const logs = await db
-				.select()
-				.from(captchaLogsTable)
-				.where(eq(captchaLogsTable.userId, testUser.id));
+			const logs = await db.select().from(captchaLogsTable).where(eq(captchaLogsTable.userId, testUser.id));
 
 			// Check hour distribution
 			const hourCounts = new Map<number, number>();
@@ -384,10 +350,7 @@ describe("Advanced Automation Pattern Detection", () => {
 				});
 			}
 
-			const logs = await db
-				.select()
-				.from(captchaLogsTable)
-				.where(eq(captchaLogsTable.userId, testUser.id));
+			const logs = await db.select().from(captchaLogsTable).where(eq(captchaLogsTable.userId, testUser.id));
 
 			// Check IP/Agent diversity
 			const uniqueIps = new Set(logs.map((l) => l.clientIp));
@@ -423,11 +386,7 @@ describe("Advanced Automation Pattern Detection", () => {
 				});
 			}
 
-			const result = await call(
-				checkAutomationPatterns,
-				{ userId: testUser.id },
-				createTestContext(db, testUser),
-			);
+			const result = await call(checkAutomationPatterns, { userId: testUser.id }, createTestContext(db, testUser));
 
 			// Should detect the recent bot behavior
 			// With 10 logs at exact 60-second intervals, should detect pattern
