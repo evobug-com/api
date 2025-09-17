@@ -18,7 +18,7 @@
 		"migrate:data": "bun run scripts/migrate-data.ts"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.2.2",
+		"@biomejs/biome": "^2.2.4",
 		"@types/bun": "^1.2.22",
 		"@types/pg": "^8.15.5",
 		"@typescript/native-preview": "latest",
@@ -33,6 +33,6 @@
 		"drizzle-orm": "alternation-engine",
 		"drizzle-zod": "alternation-engine",
 		"pg": "^8.16.3",
-		"zod": "^4.1.8"
+		"zod": "^4.1.9"
 	}
 }
