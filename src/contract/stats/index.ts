@@ -1,6 +1,8 @@
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
+	captchaLogsTable,
+	type InsertDbCaptchaLog,
 	type InsertDbUserStatsLog,
 	userSchema,
 	userStatsLogSchema,
@@ -163,6 +165,269 @@ export const leaderboard = base
 		});
 	});
 
+/**
+ * Log captcha attempt
+ */
+export const logCaptchaAttempt = base
+	.input(
+		z.object({
+			userId: z.number(),
+			captchaType: z.enum(["math", "emoji", "word"]),
+			command: z.enum(["work", "daily"]),
+			success: z.boolean(),
+			responseTime: z.number(), // in milliseconds
+			clientIp: z.string().optional(),
+			userAgent: z.string().optional(),
+		}),
+	)
+	.errors({
+		DATABASE_ERROR: {
+			message: "Database operation failed",
+		},
+	})
+	.output(
+		z.object({
+			logged: z.boolean(),
+			isSuspicious: z.boolean(),
+		}),
+	)
+	.handler(async ({ input, context, errors }) => {
+		// Check if response time is suspiciously fast
+		const minTimes = {
+			math: 2000,
+			emoji: 1000,
+			word: 3000,
+		};
+		const isSuspicious = input.responseTime < minTimes[input.captchaType];
+
+		// Log the captcha attempt
+		const logData: InsertDbCaptchaLog = {
+			userId: input.userId,
+			captchaType: input.captchaType,
+			command: input.command,
+			success: input.success,
+			responseTime: input.responseTime,
+			clientIp: input.clientIp,
+			userAgent: input.userAgent,
+		};
+
+		try {
+			await context.db.insert(captchaLogsTable).values(logData);
+			return {
+				logged: true,
+				isSuspicious,
+			};
+		} catch (error) {
+			console.error("Error logging captcha attempt:", error);
+			throw errors.DATABASE_ERROR();
+		}
+	});
+
+/**
+ * Update failed captcha count
+ */
+export const updateFailedCaptchaCount = base
+	.input(
+		userStatsSchema.pick({
+			userId: true,
+		}),
+	)
+	.errors({
+		DATABASE_ERROR: {
+			message: "Database operation failed",
+		},
+	})
+	.output(
+		z.object({
+			updated: z.boolean(),
+			failedCount: z.number(),
+			isLocked: z.boolean(),
+		}),
+	)
+	.handler(async ({ input, context, errors }) => {
+		const userStats = await context.db.query.userStatsTable.findFirst({
+			where: { userId: input.userId },
+		});
+
+		if (!userStats) {
+			throw errors.NOT_FOUND({
+				message: "User stats not found",
+			});
+		}
+
+		const newFailedCount = userStats.failedCaptchaCount + 1;
+		const now = new Date();
+
+		// Lock economy for 24 hours after 5 failed attempts
+		const lockUntil = newFailedCount >= 5 ? new Date(now.getTime() + 24 * 60 * 60 * 1000) : null;
+
+		const [updatedStats] = await context.db
+			.update(userStatsTable)
+			.set({
+				failedCaptchaCount: newFailedCount,
+				lastCaptchaFailedAt: now,
+				economyBannedUntil: lockUntil || userStats.economyBannedUntil,
+				suspiciousBehaviorScore: Math.min(100, userStats.suspiciousBehaviorScore + 10),
+				updatedAt: now,
+			})
+			.where(eq(userStatsTable.userId, input.userId))
+			.returning();
+
+		if (!updatedStats) {
+			throw errors.DATABASE_ERROR();
+		}
+
+		return {
+			updated: true,
+			failedCount: newFailedCount,
+			isLocked: !!lockUntil,
+		};
+	});
+
+/**
+ * Update suspicious behavior score
+ */
+export const updateSuspiciousScore = base
+	.input(
+		z.object({
+			userId: z.number(),
+			increment: z.number(), // Can be negative to reduce score
+		}),
+	)
+	.errors({
+		DATABASE_ERROR: {
+			message: "Database operation failed",
+		},
+	})
+	.output(
+		z.object({
+			updated: z.boolean(),
+			newScore: z.number(),
+			isEconomyBanned: z.boolean(),
+		}),
+	)
+	.handler(async ({ input, context, errors }) => {
+		const userStats = await context.db.query.userStatsTable.findFirst({
+			where: { userId: input.userId },
+		});
+
+		if (!userStats) {
+			throw errors.NOT_FOUND({
+				message: "User stats not found",
+			});
+		}
+
+		const newScore = Math.max(0, Math.min(100, userStats.suspiciousBehaviorScore + input.increment));
+		const now = new Date();
+
+		// Auto-ban at score 100 for 72 hours
+		const banUntil = newScore >= 100 ? new Date(now.getTime() + 72 * 60 * 60 * 1000) : userStats.economyBannedUntil;
+
+		const [updatedStats] = await context.db
+			.update(userStatsTable)
+			.set({
+				suspiciousBehaviorScore: newScore,
+				lastSuspiciousActivityAt: input.increment > 0 ? now : userStats.lastSuspiciousActivityAt,
+				economyBannedUntil: banUntil,
+				updatedAt: now,
+			})
+			.where(eq(userStatsTable.userId, input.userId))
+			.returning();
+
+		if (!updatedStats) {
+			throw errors.DATABASE_ERROR();
+		}
+
+		return {
+			updated: true,
+			newScore,
+			isEconomyBanned: !!banUntil && banUntil > now,
+		};
+	});
+
+/**
+ * Check for automation patterns in user's activity
+ */
+export const checkAutomationPatterns = base
+	.input(
+		userStatsSchema.pick({
+			userId: true,
+		}),
+	)
+	.output(
+		z.object({
+			hasTimingPattern: z.boolean(),
+			hasFailedCaptchaPattern: z.boolean(),
+			instantResponseCount: z.number(),
+			suspiciousScore: z.number(),
+			recommendation: z.enum(["allow", "challenge", "ban"]),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		// Get recent captcha logs (last 24 hours)
+		const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+		const recentLogs = await context.db.query.captchaLogsTable.findMany({
+			where: {
+				userId: input.userId,
+				createdAt: { gte: oneDayAgo },
+			},
+			orderBy: { createdAt: "desc" },
+		});
+
+		// Check for timing patterns (commands at exact intervals)
+		let hasTimingPattern = false;
+		if (recentLogs.length >= 3) {
+			const intervals: number[] = [];
+			for (let i = 1; i < recentLogs.length; i++) {
+				const prevLog = recentLogs[i - 1];
+				const currLog = recentLogs[i];
+				if (prevLog && currLog) {
+					const interval = prevLog.createdAt.getTime() - currLog.createdAt.getTime();
+					intervals.push(interval);
+				}
+			}
+
+			// Check if intervals are suspiciously consistent (within 5 seconds)
+			if (intervals.length >= 2) {
+				const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+				const deviations = intervals.map((i) => Math.abs(i - avgInterval));
+				const maxDeviation = Math.max(...deviations);
+				hasTimingPattern = maxDeviation < 5000; // Less than 5 second deviation
+			}
+		}
+
+		// Count instant responses (< 500ms)
+		const instantResponseCount = recentLogs.filter((log) => log.responseTime < 500).length;
+
+		// Check failed captcha pattern
+		const failedCount = recentLogs.filter((log) => !log.success).length;
+		const hasFailedCaptchaPattern = failedCount > 3;
+
+		// Get user's current suspicious score
+		const userStats = await context.db.query.userStatsTable.findFirst({
+			where: { userId: input.userId },
+		});
+		const suspiciousScore = userStats?.suspiciousBehaviorScore || 0;
+
+		// Determine recommendation
+		let recommendation: "allow" | "challenge" | "ban";
+		if (suspiciousScore >= 80 || instantResponseCount > 5) {
+			recommendation = "ban";
+		} else if (suspiciousScore >= 40 || hasTimingPattern || hasFailedCaptchaPattern) {
+			recommendation = "challenge";
+		} else {
+			recommendation = "allow";
+		}
+
+		return {
+			hasTimingPattern,
+			hasFailedCaptchaPattern,
+			instantResponseCount,
+			suspiciousScore,
+			recommendation,
+		};
+	});
+
 // /**
 //  * User stats activities retrieval contract
 //  */
@@ -313,6 +578,9 @@ export const claimDaily = base
 		ALREADY_CLAIMED: {
 			message: "Daily reward already claimed today",
 		},
+		ECONOMY_BANNED: {
+			message: "Economy access suspended",
+		},
 		DATABASE_ERROR: {
 			message: "Database operation failed",
 		},
@@ -365,6 +633,13 @@ export const claimDaily = base
 		if (!user.stats) {
 			throw errors.NOT_FOUND({
 				message: "User stats not found for the given user / claimDaily",
+			});
+		}
+
+		// Check if user is economy banned
+		if (user.stats.economyBannedUntil && user.stats.economyBannedUntil > new Date()) {
+			throw errors.ECONOMY_BANNED({
+				message: "Your economy access is temporarily suspended due to suspicious activity",
 			});
 		}
 
@@ -485,6 +760,9 @@ export const claimWork = base
 				reason: z.string(),
 			}),
 		},
+		ECONOMY_BANNED: {
+			message: "Economy access suspended",
+		},
 		DATABASE_ERROR: {
 			message: "Database operation failed",
 		},
@@ -530,6 +808,13 @@ export const claimWork = base
 		if (!userStats) {
 			throw errors.NOT_FOUND({
 				message: "User stats not found for the given user / claimWork",
+			});
+		}
+
+		// Check if user is economy banned
+		if (userStats.economyBannedUntil && userStats.economyBannedUntil > new Date()) {
+			throw errors.ECONOMY_BANNED({
+				message: "Your economy access is temporarily suspended due to suspicious activity",
 			});
 		}
 

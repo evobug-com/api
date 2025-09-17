@@ -16,12 +16,16 @@ import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions }
 // import { createSession, deleteSession } from "./auth";
 // Stats & Rewards System
 import {
+	checkAutomationPatterns,
 	checkMessageMilestone,
 	checkServerTagStreak,
 	claimDaily,
 	claimWork,
 	getServerTagStreak,
 	leaderboard,
+	logCaptchaAttempt,
+	updateFailedCaptchaCount,
+	updateSuspiciousScore,
 	userDailyCooldown,
 	userStats,
 	userWorkCooldown,
@@ -112,6 +116,18 @@ export const router = {
 			},
 			messages: {
 				checkMilestone: checkMessageMilestone,
+			},
+			captcha: {
+				log: logCaptchaAttempt,
+				failedCount: {
+					update: updateFailedCaptchaCount,
+				},
+			},
+			suspiciousScore: {
+				update: updateSuspiciousScore,
+			},
+			automation: {
+				checkPatterns: checkAutomationPatterns,
 			},
 			top: leaderboard,
 			//         get: userStats, // GET /users/{userId}/stats

@@ -68,6 +68,11 @@ describe("Users", () => {
 				serverTagBadge: null,
 				boostCount: 0,
 				boostExpires: null,
+				failedCaptchaCount: 0,
+				lastCaptchaFailedAt: null,
+				suspiciousBehaviorScore: 0,
+				lastSuspiciousActivityAt: null,
+				economyBannedUntil: null,
 			});
 		});
 

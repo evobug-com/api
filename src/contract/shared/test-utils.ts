@@ -16,15 +16,29 @@ let created = false;
 
 export const createTestDatabase = async (_shouldPushSchema = true) => {
 	if (!created) {
+		console.time("DB Init - Total");
+		console.time("DB Init - PGlite creation");
 		client = new PGlite();
-		testDb = drizzle({ client, schema, relations });
+		console.timeEnd("DB Init - PGlite creation");
 
+		console.time("DB Init - Drizzle setup");
+		testDb = drizzle({ client, schema, relations });
+		console.timeEnd("DB Init - Drizzle setup");
+
+		console.time("DB Init - pushSchema");
 		// biome-ignore lint/suspicious/noExplicitAny: For testing only
 		const { apply } = await pushSchema(schema, testDb as unknown as PgDatabase<any>);
+		console.timeEnd("DB Init - pushSchema");
+
+		console.time("DB Init - apply");
 		await apply();
+		console.timeEnd("DB Init - apply");
+
 		created = true;
+		console.timeEnd("DB Init - Total");
 	} else {
-		await testDb.execute(sql`DO $$ 
+		console.time("DB Truncate");
+		await testDb.execute(sql`DO $$
 DECLARE
             r RECORD;
             BEGIN
@@ -37,6 +51,7 @@ DECLARE
         EXECUTE 'TRUNCATE TABLE ' || quote_ident(r.tablename) || ' CASCADE';
             END LOOP;
             END $$;`);
+		console.timeEnd("DB Truncate");
 	}
 
 	// biome-ignore lint/suspicious/noExplicitAny: This is for tests only, so using `any` is acceptable here.

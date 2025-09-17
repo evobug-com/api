@@ -259,6 +259,13 @@ export const userStatsTable = pgTable("user_stats", {
 	boostCount: integer().notNull().default(0),
 	boostExpires: timestamptz(),
 
+	// Anti-automation tracking
+	failedCaptchaCount: integer().notNull().default(0),
+	lastCaptchaFailedAt: timestamptz(),
+	suspiciousBehaviorScore: integer().notNull().default(0),
+	lastSuspiciousActivityAt: timestamptz(),
+	economyBannedUntil: timestamptz(),
+
 	updatedAt: timestamptz().notNull().defaultNow(),
 });
 
@@ -307,6 +314,40 @@ export type InsertDbUserStatsLog = typeof userStatsLogTable.$inferInsert;
 export type DbUserStatsLogWithRelations = DbUserStatsLog & {
 	user: DbUser;
 };
+
+// ============================================================================
+// CAPTCHA_LOGS TABLE - Track all captcha attempts for pattern detection
+// ============================================================================
+export const captchaLogsTable = pgTable(
+	"captcha_logs",
+	{
+		id: serial().primaryKey(),
+
+		userId: integer()
+			.notNull()
+			.references(() => usersTable.id, { onDelete: "cascade" }),
+
+		captchaType: varchar({ length: 50 }).notNull(), // math, emoji, word
+		command: varchar({ length: 50 }).notNull(), // work, daily
+		success: boolean().notNull(),
+		responseTime: integer().notNull(), // in milliseconds
+		clientIp: varchar({ length: 45 }), // To track if same IP is being used
+		userAgent: text(), // To detect automated clients
+
+		createdAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		index("captcha_logs_userId_idx").on(table.userId),
+		index("captcha_logs_createdAt_idx").on(table.createdAt),
+		index("captcha_logs_userId_command_idx").on(table.userId, table.command),
+	],
+);
+
+export const captchaLogsSchema = createSelectSchema(captchaLogsTable);
+export const insertCaptchaLogsSchema = createInsertSchema(captchaLogsTable);
+
+export type DbCaptchaLog = typeof captchaLogsTable.$inferSelect;
+export type InsertDbCaptchaLog = typeof captchaLogsTable.$inferInsert;
 
 // ============================================================================
 // ORDERS TABLE
