@@ -32,7 +32,6 @@ describe("Users", () => {
 				createdAt: expect.any(Date),
 				discordId: null,
 				guildedId: null,
-				email: null,
 				role: "user",
 				username: "testuser",
 			});
