@@ -19,6 +19,7 @@ import {
 	checkAutomationPatterns,
 	checkMessageMilestone,
 	checkServerTagStreak,
+	checkVoiceTimeMilestone,
 	claimDaily,
 	claimWork,
 	getServerTagStreak,
@@ -116,6 +117,9 @@ export const router = {
 			},
 			messages: {
 				checkMilestone: checkMessageMilestone,
+			},
+			voiceTime: {
+				checkMilestone: checkVoiceTimeMilestone,
 			},
 			captcha: {
 				log: logCaptchaAttempt,

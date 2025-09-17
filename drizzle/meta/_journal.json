@@ -29,6 +29,13 @@
 			"when": 1758061959335,
 			"tag": "0003_living_selene",
 			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "8",
+			"when": 1758123921591,
+			"tag": "0004_solid_starhawk",
+			"breakpoints": true
 		}
 	]
 }

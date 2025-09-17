@@ -251,6 +251,11 @@ export const userStatsTable = pgTable("user_stats", {
 	lastServerTagCheck: timestamptz(),
 	serverTagBadge: varchar({ length: 255 }), // Store badge ID to track if tag changes
 
+	// Voice channel time tracking
+	voiceTimeMinutes: integer().notNull().default(0), // Total time in voice channels (minutes)
+	lastVoiceCheck: timestamptz(), // Last time we checked voice activity
+	lastVoiceJoinedAt: timestamptz(), // When user last joined a voice channel
+
 	// Economy totals
 	coinsCount: integer().notNull().default(0),
 	xpCount: integer().notNull().default(0),
