@@ -259,13 +259,13 @@ export function createMessageMilestoneStats(currentLevel: number, milestoneCount
 	const baseCoins = 1000;
 	const baseXp = 500;
 
-	// Determine phase multiplier based on milestone reached - exponential scaling
+	// Determine phase multiplier based on milestone reached
 	let phaseMultiplier = 1;
 	if (milestoneCount === 100) phaseMultiplier = 1;
-	else if (milestoneCount === 1000) phaseMultiplier = 5;
-	else if (milestoneCount === 10000) phaseMultiplier = 15;
-	else if (milestoneCount === 100000) phaseMultiplier = 50;
-	else if (milestoneCount === 1000000) phaseMultiplier = 200;
+	else if (milestoneCount === 1000) phaseMultiplier = 10;
+	else if (milestoneCount === 10000) phaseMultiplier = 100;
+	else if (milestoneCount === 100000) phaseMultiplier = 1000;
+	else if (milestoneCount === 1000000) phaseMultiplier = 10000;
 
 	const coinsReward = baseCoins * phaseMultiplier;
 	const xpReward = baseXp * phaseMultiplier;

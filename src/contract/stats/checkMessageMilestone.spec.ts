@@ -47,14 +47,14 @@ describe("checkMessageMilestone API", () => {
 	});
 
 	it("should apply correct multipliers for higher milestones", async () => {
-		// Test 1000 milestone (5x multiplier)
+		// Test 1000 milestone (1x multiplier)
 		await db.update(userStatsTable).set({ messagesCount: 999 }).where(eq(userStatsTable.userId, testUserId));
 
 		const result = await call(checkMessageMilestone, { userId: testUserId }, createTestContext(db));
 
 		expect(result.milestoneReached).toBe(1000);
-		expect(result.claimStats.earnedTotalCoins).toBe(5000); // 1000 * 5
-		expect(result.claimStats.earnedTotalXp).toBe(2500); // 500 * 5
+		expect(result.claimStats.earnedTotalCoins).toBe(10000);
+		expect(result.claimStats.earnedTotalXp).toBe(5000);
 	});
 
 	it("should not reward between milestones", async () => {
