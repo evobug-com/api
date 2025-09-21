@@ -64,7 +64,7 @@ describe("Server Tag Streak functionality", () => {
 			await db
 				.update(userStatsTable)
 				.set({
-					lastServerTagCheck: new Date(Date.now() - 13 * 60 * 60 * 1000),
+					lastServerTagCheck: new Date(Date.now() - 21 * 60 * 60 * 1000),
 				})
 				.where(eq(userStatsTable.userId, testUserId));
 
@@ -91,7 +91,7 @@ describe("Server Tag Streak functionality", () => {
 				.set({
 					serverTagStreak: 4,
 					maxServerTagStreak: 4,
-					lastServerTagCheck: new Date(Date.now() - 13 * 60 * 60 * 1000),
+					lastServerTagCheck: new Date(Date.now() - 21 * 60 * 60 * 1000),
 				})
 				.where(eq(userStatsTable.userId, testUserId));
 
@@ -122,7 +122,7 @@ describe("Server Tag Streak functionality", () => {
 					maxServerTagStreak: 9,
 					coinsCount: 1000,
 					xpCount: 500,
-					lastServerTagCheck: new Date(Date.now() - 13 * 60 * 60 * 1000),
+					lastServerTagCheck: new Date(Date.now() - 21 * 60 * 60 * 1000),
 				})
 				.where(eq(userStatsTable.userId, testUserId));
 
@@ -186,7 +186,7 @@ describe("Server Tag Streak functionality", () => {
 			await db
 				.update(userStatsTable)
 				.set({
-					lastServerTagCheck: new Date(Date.now() - 13 * 60 * 60 * 1000),
+					lastServerTagCheck: new Date(Date.now() - 21 * 60 * 60 * 1000),
 				})
 				.where(eq(userStatsTable.userId, testUserId));
 
@@ -214,7 +214,7 @@ describe("Server Tag Streak functionality", () => {
 				.update(userStatsTable)
 				.set({
 					serverTagStreak: 4,
-					lastServerTagCheck: new Date(Date.now() - 13 * 60 * 60 * 1000),
+					lastServerTagCheck: new Date(Date.now() - 21 * 60 * 60 * 1000),
 				})
 				.where(eq(userStatsTable.userId, testUserId));
 
@@ -387,7 +387,7 @@ describe("Server Tag Streak functionality", () => {
 				await db
 					.update(userStatsTable)
 					.set({
-						lastServerTagCheck: new Date(Date.now() - 13 * 60 * 60 * 1000),
+						lastServerTagCheck: new Date(Date.now() - 21 * 60 * 60 * 1000),
 					})
 					.where(eq(userStatsTable.userId, testUserId));
 
@@ -407,7 +407,7 @@ describe("Server Tag Streak functionality", () => {
 			await db
 				.update(userStatsTable)
 				.set({
-					lastServerTagCheck: new Date(Date.now() - 13 * 60 * 60 * 1000),
+					lastServerTagCheck: new Date(Date.now() - 21 * 60 * 60 * 1000),
 				})
 				.where(eq(userStatsTable.userId, testUserId));
 
@@ -443,7 +443,7 @@ describe("Server Tag Streak functionality", () => {
 			await db
 				.update(userStatsTable)
 				.set({
-					lastServerTagCheck: new Date(Date.now() - 13 * 60 * 60 * 1000),
+					lastServerTagCheck: new Date(Date.now() - 21 * 60 * 60 * 1000),
 				})
 				.where(eq(userStatsTable.userId, testUserId));
 
@@ -499,7 +499,7 @@ describe("Server Tag Streak functionality", () => {
 						.update(userStatsTable)
 						.set({
 							serverTagStreak: currentStreak,
-							lastServerTagCheck: new Date(Date.now() - 13 * 60 * 60 * 1000),
+							lastServerTagCheck: new Date(Date.now() - 21 * 60 * 60 * 1000),
 						})
 						.where(eq(userStatsTable.userId, testUserId));
 
@@ -518,7 +518,7 @@ describe("Server Tag Streak functionality", () => {
 				await db
 					.update(userStatsTable)
 					.set({
-						lastServerTagCheck: new Date(Date.now() - 13 * 60 * 60 * 1000),
+						lastServerTagCheck: new Date(Date.now() - 21 * 60 * 60 * 1000),
 					})
 					.where(eq(userStatsTable.userId, testUserId));
 

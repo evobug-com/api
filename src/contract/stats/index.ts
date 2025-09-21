@@ -1001,7 +1001,7 @@ export const checkServerTagStreak = base
 			});
 		}
 
-		// Check if it's been at least 12 hours since last check
+		// Check if it's been at least 12 hours since last check for API rate limiting
 		const now = new Date();
 		const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
 		const currentLevel = calculateLevel(userStats.xpCount);
@@ -1013,6 +1013,7 @@ export const checkServerTagStreak = base
 		let levelProgress = getLevelProgress(userStats.xpCount);
 
 		if (userStats.lastServerTagCheck && userStats.lastServerTagCheck > twelveHoursAgo) {
+			// Within 12 hours - just update the check time but don't change streak
 			return {
 				updatedStats: userStats,
 				streakChanged: false,
@@ -1030,12 +1031,31 @@ export const checkServerTagStreak = base
 		let message = "";
 
 		if (input.hasServerTag) {
-			// User has a server tag - increment streak
+			// User has a server tag - check if we should increment streak
 			const badgeChanged =
 				input.serverTagBadge && userStats.serverTagBadge && userStats.serverTagBadge !== input.serverTagBadge;
 
-			newStreak = userStats.serverTagStreak + 1;
-			streakChanged = true;
+			// Calculate days since last check
+			let shouldIncrementStreak = false;
+			if (!userStats.lastServerTagCheck) {
+				// First check ever, start the streak
+				shouldIncrementStreak = true;
+			} else {
+				// Check if it's been at least 20 hours since last check (to account for some variance)
+				// This prevents double-counting within the same day
+				const hoursSinceLastCheck = (now.getTime() - userStats.lastServerTagCheck.getTime()) / (1000 * 60 * 60);
+				if (hoursSinceLastCheck >= 20) {
+					shouldIncrementStreak = true;
+				}
+			}
+
+			if (shouldIncrementStreak) {
+				newStreak = userStats.serverTagStreak + 1;
+				streakChanged = true;
+			} else {
+				// Same day check, maintain current streak
+				newStreak = userStats.serverTagStreak;
+			}
 
 			// Check for badge change
 			if (badgeChanged) {
@@ -1044,13 +1064,15 @@ export const checkServerTagStreak = base
 			}
 
 			// Check for 5-day milestone
-			if (newStreak > 0 && newStreak % 5 === 0) {
+			if (newStreak > 0 && newStreak % 5 === 0 && streakChanged) {
 				rewardEarned = true;
 				milestoneReached = newStreak;
 				message = `Server tag streak milestone reached: ${newStreak} days!`;
-			} else if (!badgeChanged) {
-				// Only set this message if badge didn't change
+			} else if (!badgeChanged && streakChanged) {
+				// Only set this message if badge didn't change and streak incremented
 				message = `Server tag streak increased to ${newStreak} days`;
+			} else if (!streakChanged && !badgeChanged) {
+				message = `Server tag streak maintained at ${newStreak} days`;
 			}
 		} else {
 			// User doesn't have a server tag - reset streak
