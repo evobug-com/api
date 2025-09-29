@@ -439,7 +439,7 @@ describe("Standing", () => {
 		});
 
 		it("should fail when user does not exist", async () => {
-			await expect(
+			expect(
 				call(
 					getStanding,
 					{
@@ -699,7 +699,7 @@ describe("Standing", () => {
 		});
 
 		it("should handle empty user list", async () => {
-			await expect(
+			expect(
 				call(
 					getBulkStandings,
 					{
@@ -714,7 +714,7 @@ describe("Standing", () => {
 		it("should handle maximum user limit", async () => {
 			const manyUserIds = Array.from({ length: 101 }, (_, i) => i + 1);
 
-			await expect(
+			expect(
 				call(
 					getBulkStandings,
 					{

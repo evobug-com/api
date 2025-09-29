@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { and, eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
@@ -60,7 +59,7 @@ describe("Message Logs", () => {
 		});
 
 		it("should fail when userId is missing", async () => {
-			await expect(
+			expect(
 				call(
 					createMessageLog,
 					{
@@ -76,7 +75,7 @@ describe("Message Logs", () => {
 		});
 
 		it("should fail when user does not exist", async () => {
-			await expect(
+			expect(
 				call(
 					createMessageLog,
 					{
@@ -471,7 +470,7 @@ describe("Message Logs", () => {
 		});
 
 		it("should fail when message doesn't exist", async () => {
-			await expect(
+			expect(
 				call(
 					updateMessageLog,
 					{
@@ -558,7 +557,7 @@ describe("Message Logs", () => {
 		});
 
 		it("should fail when message doesn't exist", async () => {
-			await expect(
+			expect(
 				call(
 					updateMessageDeletedStatus,
 					{
@@ -656,7 +655,7 @@ describe("Message Logs", () => {
 		});
 
 		it("should fail when message doesn't exist", async () => {
-			await expect(
+			expect(
 				call(
 					updateMessageEditedStatus,
 					{
@@ -739,7 +738,7 @@ describe("Message Logs", () => {
 
 		it("should reject null userId", async () => {
 			// Since userId is nullable in the schema but we validate against it
-			await expect(
+			expect(
 				call(
 					createMessageLog,
 					{

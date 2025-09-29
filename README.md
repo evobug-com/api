@@ -227,8 +227,7 @@ bun test:coverage       # Generate coverage report
 
 # Code Quality
 bunx tsgo --noEmit      # Check TypeScript errors
-bunx biome lint         # Run linter
-bunx biome check --write . # Format and lint code
+bunx oxlint --type-aware
 
 # Production
 bun run migrate:production  # Run production migrations
@@ -313,7 +312,7 @@ module.exports = {
 - Use tabs for indentation
 - Double quotes for strings
 - Maximum line width: 120 characters
-- Run `bunx biome check --write .` before committing
+- Run `bunx oxlint --type-aware` before committing
 
 ## 📝 License
 

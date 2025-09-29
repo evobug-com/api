@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { insertMessagesLogsSchema, messagesLogsSchema, messagesLogsTable, usersTable } from "../../db/schema.ts";
+import { insertMessagesLogsSchema, messagesLogsTable, usersTable } from "../../db/schema.ts";
 import { base } from "../shared/os.ts";
 
 // /**

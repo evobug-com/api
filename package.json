@@ -18,12 +18,13 @@
 		"migrate:data": "bun run scripts/migrate-data.ts"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.2.4",
 		"@types/bun": "^1.2.23",
 		"@types/pg": "^8.15.5",
 		"@typescript/native-preview": "latest",
 		"csv-parse": "^6.1.0",
-		"drizzle-kit": "alternation-engine"
+		"drizzle-kit": "alternation-engine",
+		"oxlint": "^1.19.0",
+		"oxlint-tsgolint": "^0.2.0"
 	},
 	"dependencies": {
 		"@electric-sql/pglite": "^0.3.10",

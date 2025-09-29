@@ -1562,7 +1562,7 @@ describe("Stats", async () => {
 				expect(tiedUsers.length).toBe(2);
 
 				// Both should have consecutive ranks (database ordering determines which comes first)
-				const ranks = tiedUsers.map((user) => user.rank).sort() as [number, number];
+				const ranks = tiedUsers.map((user) => user.rank).sort((a, b) => a - b) as [number, number];
 				expect(ranks[1] - ranks[0]).toBe(1);
 			});
 

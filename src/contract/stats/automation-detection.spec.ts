@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 import { call } from "@orpc/server";
-import { and, eq, gte, lte } from "drizzle-orm";
-import { captchaLogsTable, type DbUser, type InsertDbCaptchaLog, userStatsTable } from "../../db/schema.ts";
+import { and, eq } from "drizzle-orm";
+import { captchaLogsTable, type DbUser, userStatsTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser } from "../users";
 import { checkAutomationPatterns, claimDaily, claimWork } from "./index.ts";
@@ -409,7 +409,7 @@ describe("Advanced Automation Pattern Detection", () => {
 				.where(eq(userStatsTable.userId, testUser.id));
 
 			// Try to claim daily
-			await expect(
+			expect(
 				call(
 					claimDaily,
 					{
@@ -421,7 +421,7 @@ describe("Advanced Automation Pattern Detection", () => {
 			).rejects.toThrow("Your economy access is temporarily suspended");
 
 			// Try to claim work
-			await expect(
+			expect(
 				call(
 					claimWork,
 					{

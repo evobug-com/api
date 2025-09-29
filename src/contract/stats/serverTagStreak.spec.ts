@@ -239,7 +239,7 @@ describe("Server Tag Streak functionality", () => {
 		});
 
 		it("should throw error when user stats not found", async () => {
-			await expect(
+			expect(
 				call(
 					checkServerTagStreak,
 					{
@@ -356,7 +356,7 @@ describe("Server Tag Streak functionality", () => {
 		});
 
 		it("should throw error when user stats not found", async () => {
-			await expect(
+			expect(
 				call(
 					getServerTagStreak,
 					{

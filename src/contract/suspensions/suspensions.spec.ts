@@ -99,7 +99,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should fail when issuer does not exist", async () => {
-			await expect(
+			expect(
 				call(
 					createSuspension,
 					{
@@ -118,7 +118,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should fail when user does not exist", async () => {
-			await expect(
+			expect(
 				call(
 					createSuspension,
 					{
@@ -146,7 +146,7 @@ describe("Suspensions", () => {
 			);
 
 			// Try to create second suspension
-			await expect(
+			expect(
 				call(
 					createSuspension,
 					{
@@ -319,7 +319,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should fail when lifter does not exist", async () => {
-			await expect(
+			expect(
 				call(
 					liftSuspension,
 					{
@@ -349,7 +349,7 @@ describe("Suspensions", () => {
 			);
 
 			// Try to lift again
-			await expect(
+			expect(
 				call(
 					liftSuspension,
 					{
@@ -369,7 +369,7 @@ describe("Suspensions", () => {
 				createTestContext(db),
 			);
 
-			await expect(
+			expect(
 				call(
 					liftSuspension,
 					{
@@ -1083,7 +1083,7 @@ describe("Suspensions", () => {
 
 	describe("Edge cases", () => {
 		it("should handle empty reason gracefully", async () => {
-			await expect(
+			expect(
 				call(
 					createSuspension,
 					{
@@ -1100,7 +1100,7 @@ describe("Suspensions", () => {
 		it("should handle very long reason text", async () => {
 			const longReason = "a".repeat(1001);
 
-			await expect(
+			expect(
 				call(
 					createSuspension,
 					{
@@ -1115,7 +1115,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should handle negative duration", async () => {
-			await expect(
+			expect(
 				call(
 					createSuspension,
 					{
@@ -1131,7 +1131,7 @@ describe("Suspensions", () => {
 		});
 
 		it("should handle zero duration", async () => {
-			await expect(
+			expect(
 				call(
 					createSuspension,
 					{

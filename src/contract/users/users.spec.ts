@@ -89,7 +89,7 @@ describe("Users", () => {
 			);
 
 			// Try to create another user with the same username
-			await expect(
+			expect(
 				call(
 					createUser,
 					{
@@ -161,7 +161,7 @@ describe("Users", () => {
 		});
 
 		it("should handle updating non-existent user", async () => {
-			await expect(
+			expect(
 				call(
 					updateUser,
 					{
@@ -193,7 +193,7 @@ describe("Users", () => {
 			);
 
 			// Try to update user2 with user1's username
-			await expect(
+			expect(
 				call(
 					updateUser,
 					{
@@ -301,7 +301,7 @@ describe("Users", () => {
 				createTestContext(db),
 			);
 
-			await expect(
+			expect(
 				call(
 					createUser,
 					{
@@ -327,7 +327,7 @@ describe("Users", () => {
 				createTestContext(db),
 			);
 
-			await expect(
+			expect(
 				call(
 					createUser,
 					{
@@ -387,7 +387,7 @@ describe("Users", () => {
 		it("should handle very long username", async () => {
 			const longUsername = "a".repeat(51); // Assuming 50 char limit
 
-			await expect(
+			expect(
 				call(
 					createUser,
 					{

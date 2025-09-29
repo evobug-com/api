@@ -40,7 +40,7 @@ jobs:
         run: bunx tsgo --noEmit
 
       - name: Lint and format check
-        run: bunx biome check .
+        run: bunx oxlint --type-aware
 
       - name: Run tests
         run: bun test

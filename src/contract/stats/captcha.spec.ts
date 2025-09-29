@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
-import { captchaLogsTable, type DbUser, type InsertDbCaptchaLog, userStatsTable, usersTable } from "../../db/schema.ts";
+import { captchaLogsTable, type DbUser, type InsertDbCaptchaLog, userStatsTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser } from "../users";
 import {
@@ -185,7 +184,7 @@ describe("Captcha API Endpoints", () => {
 				.set({ suspiciousBehaviorScore: 95 })
 				.where(eq(userStatsTable.userId, testUser.id));
 
-			const result = await call(
+            await call(
 				updateFailedCaptchaCount,
 				{
 					userId: testUser.id,
