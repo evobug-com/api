@@ -19,20 +19,20 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
-		"@types/bun": "^1.2.22",
+		"@types/bun": "^1.2.23",
 		"@types/pg": "^8.15.5",
 		"@typescript/native-preview": "latest",
 		"csv-parse": "^6.1.0",
 		"drizzle-kit": "alternation-engine"
 	},
 	"dependencies": {
-		"@electric-sql/pglite": "^0.3.8",
-		"@orpc/client": "^1.8.9",
-		"@orpc/contract": "^1.8.9",
-		"@orpc/server": "^1.8.9",
+		"@electric-sql/pglite": "^0.3.10",
+		"@orpc/client": "^1.9.2",
+		"@orpc/contract": "^1.9.2",
+		"@orpc/server": "^1.9.2",
 		"drizzle-orm": "alternation-engine",
 		"drizzle-zod": "alternation-engine",
 		"pg": "^8.16.3",
-		"zod": "^4.1.9"
+		"zod": "^4.1.11"
 	}
 }
