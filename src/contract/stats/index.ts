@@ -259,6 +259,28 @@ export const logCaptchaAttempt = base
 
 		try {
 			await context.db.insert(captchaLogsTable).values(logData);
+
+			// Reward successful captcha attempts with score reduction (unless response was inhuman)
+			if (input.success && input.responseTime >= 500) {
+				const userStats = await context.db.query.userStatsTable.findFirst({
+					where: { userId: input.userId },
+				});
+
+				if (userStats && userStats.suspiciousBehaviorScore > 0) {
+					// Reduce score by 10 for passing captcha correctly
+					const newScore = Math.max(0, userStats.suspiciousBehaviorScore - 10);
+					await context.db
+						.update(userStatsTable)
+						.set({
+							suspiciousBehaviorScore: newScore,
+							updatedAt: new Date(),
+						})
+						.where(eq(userStatsTable.userId, input.userId));
+
+					console.log(`[CAPTCHA] User ${input.userId} suspicious score reduced from ${userStats.suspiciousBehaviorScore} to ${newScore} for passing captcha`);
+				}
+			}
+
 			return {
 				logged: true,
 				isSuspicious,
@@ -683,8 +705,11 @@ export const claimDaily = base
 			});
 		}
 
+		// User stats exists, safe to use
+		const userStats = user.stats;
+
 		// Check if user is economy banned
-		if (user.stats.economyBannedUntil && user.stats.economyBannedUntil > new Date()) {
+		if (userStats.economyBannedUntil && userStats.economyBannedUntil > new Date()) {
 			throw errors.ECONOMY_BANNED({
 				message: "Your economy access is temporarily suspended due to suspicious activity",
 			});
@@ -729,21 +754,24 @@ export const claimDaily = base
 		);
 
 		// Update streak
-		const newStreak = yesterdayLogs ? user.stats.dailyStreak + 1 : 1;
-		const maxStreak = Math.max(user.stats.maxDailyStreak, newStreak);
+		const newStreak = yesterdayLogs ? userStats.dailyStreak + 1 : 1;
+		const maxStreak = Math.max(userStats.maxDailyStreak, newStreak);
 
 		// Calculate rewards with boost multiplier
-		const currentLevel = calculateLevel(user.stats.xpCount);
+		const currentLevel = calculateLevel(userStats.xpCount);
 		const rewards = calculateRewards("daily", currentLevel, newStreak, input.boostCount);
 
 		// Calculate new totals
-		const newCoins = user.stats.coinsCount + rewards.earnedTotalCoins;
-		const newXp = user.stats.xpCount + rewards.earnedTotalXp;
+		const newCoins = userStats.coinsCount + rewards.earnedTotalCoins;
+		const newXp = userStats.xpCount + rewards.earnedTotalXp;
 
 		// Check for level up
-		const levelUp = processLevelUp(user.stats.xpCount, newXp);
+		const levelUp = processLevelUp(userStats.xpCount, newXp);
 
 		return await context.db.transaction(async (db) => {
+			// Reduce suspicious score by 2 for successful claim (reward good behavior)
+			const newSuspiciousScore = Math.max(0, userStats.suspiciousBehaviorScore - 2);
+
 			// Update user stats including boost count
 			const [updatedStats] = await db
 				.update(userStatsTable)
@@ -753,6 +781,7 @@ export const claimDaily = base
 					coinsCount: newCoins + (levelUp?.bonusCoins ?? 0),
 					xpCount: newXp,
 					boostCount: input.boostCount,
+					suspiciousBehaviorScore: newSuspiciousScore,
 					updatedAt: new Date(),
 				})
 				.where(eq(userStatsTable.userId, input.userId))
@@ -893,6 +922,9 @@ export const claimWork = base
 		const levelUp = processLevelUp(userStats.xpCount, newXp);
 
 		return await context.db.transaction(async (db) => {
+			// Reduce suspicious score by 2 for successful claim (reward good behavior)
+			const newSuspiciousScore = Math.max(0, userStats.suspiciousBehaviorScore - 2);
+
 			const [updatedStats] = await db
 				.update(userStatsTable)
 				.set({
@@ -901,6 +933,7 @@ export const claimWork = base
 					workCount: newWorkCount,
 					lastWorkAt: new Date(),
 					boostCount: input.boostCount,
+					suspiciousBehaviorScore: newSuspiciousScore,
 					updatedAt: new Date(),
 				})
 				.where(eq(userStatsTable.userId, input.userId))
