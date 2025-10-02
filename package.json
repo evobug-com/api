@@ -15,7 +15,9 @@
 		"db:studio": "drizzle-kit studio",
 		"db:drop": "drizzle-kit drop",
 		"migrate:production": "bash scripts/migrate-production.sh",
-		"migrate:data": "bun run scripts/migrate-data.ts"
+		"migrate:data": "bun run scripts/migrate-data.ts",
+		"ts": "tsgo --noEmit",
+		"lint": "oxlint --type-aware"
 	},
 	"devDependencies": {
 		"@types/bun": "^1.2.23",
