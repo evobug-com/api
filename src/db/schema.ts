@@ -567,3 +567,183 @@ export type DbEventParticipantWithRelations = DbEventParticipant & {
 	event: DbEvent;
 	user: DbUser;
 };
+
+// ============================================================================
+// ANTI-CHEAT SYSTEM TABLES
+// ============================================================================
+
+// ============================================================================
+// COMMAND_HISTORY TABLE - Track all economy command executions
+// ============================================================================
+export const commandHistoryTable = pgTable(
+	"command_history",
+	{
+		id: serial().primaryKey(),
+
+		userId: integer()
+			.notNull()
+			.references(() => usersTable.id, { onDelete: "cascade" }),
+
+		guildId: varchar({ length: 255 }).notNull(),
+		commandName: varchar({ length: 100 }).notNull(), // "work", "daily"
+		executedAt: timestamptz().notNull().defaultNow(),
+		responseTime: integer(), // Milliseconds from command to response
+		success: boolean().notNull().default(true),
+		metadata: jsonb().$type<Record<string, unknown>>().default({}),
+
+		createdAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		index("command_history_userId_executedAt_idx").on(table.userId, table.executedAt),
+		index("command_history_commandName_executedAt_idx").on(table.commandName, table.executedAt),
+		index("command_history_recent_idx").on(table.executedAt),
+	],
+);
+
+export const commandHistorySchema = createSelectSchema(commandHistoryTable);
+export const insertCommandHistorySchema = createInsertSchema(commandHistoryTable);
+
+export type DbCommandHistory = typeof commandHistoryTable.$inferSelect;
+export type InsertDbCommandHistory = typeof commandHistoryTable.$inferInsert;
+
+// ============================================================================
+// USER_BEHAVIOR_METRICS TABLE - Statistical analysis results
+// ============================================================================
+export const userBehaviorMetricsTable = pgTable(
+	"user_behavior_metrics",
+	{
+		userId: integer()
+			.primaryKey()
+			.references(() => usersTable.id, { onDelete: "cascade" }),
+
+		guildId: varchar({ length: 255 }).notNull(),
+
+		// Statistics
+		totalCommands: integer().notNull().default(0),
+		avgCommandInterval: integer(), // Average seconds between commands
+		stddevCommandInterval: integer(), // Standard deviation in seconds
+		coefficientVariation: integer(), // CV as percentage (multiplied by 100)
+
+		// Timestamps
+		lastCommandAt: timestamptz(),
+		lastAnalysisAt: timestamptz(),
+		updatedAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		index("user_behavior_metrics_cv_idx").on(table.coefficientVariation),
+		index("user_behavior_metrics_guildId_idx").on(table.guildId),
+	],
+);
+
+export const userBehaviorMetricsSchema = createSelectSchema(userBehaviorMetricsTable);
+export const insertUserBehaviorMetricsSchema = createInsertSchema(userBehaviorMetricsTable);
+
+export type DbUserBehaviorMetrics = typeof userBehaviorMetricsTable.$inferSelect;
+export type InsertDbUserBehaviorMetrics = typeof userBehaviorMetricsTable.$inferInsert;
+
+// ============================================================================
+// SUSPICION_SCORES TABLE - Detailed suspicion tracking
+// ============================================================================
+export const suspicionScoresTable = pgTable(
+	"suspicion_scores",
+	{
+		id: serial().primaryKey(),
+
+		userId: integer()
+			.notNull()
+			.references(() => usersTable.id, { onDelete: "cascade" }),
+
+		guildId: varchar({ length: 255 }).notNull(),
+
+		// Score breakdown
+		totalScore: integer().notNull().default(0), // 0-100
+		timingScore: integer().notNull().default(0), // 0-100
+		behavioralScore: integer().notNull().default(0), // 0-100
+		socialScore: integer().notNull().default(0), // 0-100
+		accountScore: integer().notNull().default(0), // 0-100
+
+		reason: text(), // Description of why score was assigned
+		detectedAt: timestamptz().notNull().defaultNow(),
+
+		// Resolution tracking
+		resolved: boolean().notNull().default(false),
+		resolvedAt: timestamptz(),
+		resolutionNotes: text(),
+
+		createdAt: timestamptz().notNull().defaultNow(),
+		updatedAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		index("suspicion_scores_userId_detectedAt_idx").on(table.userId, table.detectedAt),
+		index("suspicion_scores_active_idx").on(table.userId, table.resolved, table.detectedAt),
+		index("suspicion_scores_high_idx").on(table.totalScore, table.detectedAt),
+	],
+);
+
+export const suspicionScoresSchema = createSelectSchema(suspicionScoresTable);
+export const insertSuspicionScoresSchema = createInsertSchema(suspicionScoresTable);
+
+export type DbSuspicionScore = typeof suspicionScoresTable.$inferSelect;
+export type InsertDbSuspicionScore = typeof suspicionScoresTable.$inferInsert;
+
+// ============================================================================
+// TRUST_SCORES TABLE - Reputation system
+// ============================================================================
+export const trustScoresTable = pgTable("trust_scores", {
+	userId: integer()
+		.primaryKey()
+		.references(() => usersTable.id, { onDelete: "cascade" }),
+
+	guildId: varchar({ length: 255 }).notNull(),
+
+	// Trust score (0-1000 scale, 500 is neutral)
+	score: integer().notNull().default(500),
+
+	// Score component breakdown
+	accountFactorScore: integer().notNull().default(0), // Account age, avatar, etc.
+	behavioralHistoryScore: integer().notNull().default(0), // Clean history
+	transactionPatternScore: integer().notNull().default(0), // Normal patterns
+	socialSignalScore: integer().notNull().default(0), // Social engagement
+
+	// Violation tracking
+	lastViolationAt: timestamptz(),
+	cleanDays: integer().notNull().default(0), // Days since last violation
+
+	updatedAt: timestamptz().notNull().defaultNow(),
+});
+
+export const trustScoresSchema = createSelectSchema(trustScoresTable);
+export const insertTrustScoresSchema = createInsertSchema(trustScoresTable);
+
+export type DbTrustScore = typeof trustScoresTable.$inferSelect;
+export type InsertDbTrustScore = typeof trustScoresTable.$inferInsert;
+
+// ============================================================================
+// RATE_LIMIT_VIOLATIONS TABLE - Track rate limit breaches
+// ============================================================================
+export const rateLimitViolationsTable = pgTable(
+	"rate_limit_violations",
+	{
+		id: serial().primaryKey(),
+
+		userId: integer()
+			.notNull()
+			.references(() => usersTable.id, { onDelete: "cascade" }),
+
+		guildId: varchar({ length: 255 }).notNull(),
+		commandName: varchar({ length: 100 }),
+		violationType: varchar({ length: 50 }), // "token_bucket", "sliding_window", "global"
+
+		occurredAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		index("rate_limit_violations_userId_occurredAt_idx").on(table.userId, table.occurredAt),
+		index("rate_limit_violations_recent_idx").on(table.occurredAt),
+	],
+);
+
+export const rateLimitViolationsSchema = createSelectSchema(rateLimitViolationsTable);
+export const insertRateLimitViolationsSchema = createInsertSchema(rateLimitViolationsTable);
+
+export type DbRateLimitViolation = typeof rateLimitViolationsTable.$inferSelect;
+export type InsertDbRateLimitViolation = typeof rateLimitViolationsTable.$inferInsert;

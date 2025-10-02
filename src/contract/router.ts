@@ -5,6 +5,15 @@
  */
 
 import {
+	analyzeTimingPatterns,
+	calculateBehavioralScore,
+	calculateSuspicionScore,
+	getEnforcementAction,
+	recordCommandExecution,
+	recordRateLimitViolation,
+	updateTrustScore,
+} from "./anticheat";
+import {
 	createMessageLog,
 	updateMessageDeletedStatus,
 	updateMessageEditedStatus,
@@ -147,6 +156,31 @@ export const router = {
 			//         workRecovery: {
 			//             update: updateWorkRecovery, // PUT /users/{userId}/stats/work-recovery
 			//         },
+		},
+
+		// Anti-cheat endpoints
+		anticheat: {
+			command: {
+				record: recordCommandExecution, // POST /users/anticheat/command/record
+			},
+			timing: {
+				analyze: analyzeTimingPatterns, // POST /users/anticheat/timing/analyze
+			},
+			behavioral: {
+				calculate: calculateBehavioralScore, // POST /users/anticheat/behavioral/calculate
+			},
+			suspicion: {
+				calculate: calculateSuspicionScore, // POST /users/anticheat/suspicion/calculate
+			},
+			enforcement: {
+				get: getEnforcementAction, // POST /users/anticheat/enforcement/get
+			},
+			trust: {
+				update: updateTrustScore, // POST /users/anticheat/trust/update
+			},
+			rateLimit: {
+				recordViolation: recordRateLimitViolation, // POST /users/anticheat/rateLimit/recordViolation
+			},
 		},
 	},
 	//

@@ -35,6 +35,28 @@ export const relations = defineRelations(schema, (r) => ({
 			to: r.eventParticipantsTable.userId,
 		}),
 
+		// Anti-cheat relations
+		commandHistory: r.many.commandHistoryTable({
+			from: r.usersTable.id,
+			to: r.commandHistoryTable.userId,
+		}),
+		behaviorMetrics: r.one.userBehaviorMetricsTable({
+			from: r.usersTable.id,
+			to: r.userBehaviorMetricsTable.userId,
+		}),
+		suspicionScores: r.many.suspicionScoresTable({
+			from: r.usersTable.id,
+			to: r.suspicionScoresTable.userId,
+		}),
+		trustScore: r.one.trustScoresTable({
+			from: r.usersTable.id,
+			to: r.trustScoresTable.userId,
+		}),
+		rateLimitViolations: r.many.rateLimitViolationsTable({
+			from: r.usersTable.id,
+			to: r.rateLimitViolationsTable.userId,
+		}),
+
 		// Relations where user is the issuer/reviewer/lifter
 		issuedViolations: r.many.violationsTable({
 			from: r.usersTable.id,
@@ -182,6 +204,50 @@ export const relations = defineRelations(schema, (r) => ({
 		}),
 		user: r.one.usersTable({
 			from: r.eventParticipantsTable.userId,
+			to: r.usersTable.id,
+		}),
+	},
+
+	// ============================================================================
+	// ANTI-CHEAT SYSTEM RELATIONS
+	// ============================================================================
+
+	// Command History Relations
+	commandHistoryTable: {
+		user: r.one.usersTable({
+			from: r.commandHistoryTable.userId,
+			to: r.usersTable.id,
+		}),
+	},
+
+	// User Behavior Metrics Relations
+	userBehaviorMetricsTable: {
+		user: r.one.usersTable({
+			from: r.userBehaviorMetricsTable.userId,
+			to: r.usersTable.id,
+		}),
+	},
+
+	// Suspicion Scores Relations
+	suspicionScoresTable: {
+		user: r.one.usersTable({
+			from: r.suspicionScoresTable.userId,
+			to: r.usersTable.id,
+		}),
+	},
+
+	// Trust Scores Relations
+	trustScoresTable: {
+		user: r.one.usersTable({
+			from: r.trustScoresTable.userId,
+			to: r.usersTable.id,
+		}),
+	},
+
+	// Rate Limit Violations Relations
+	rateLimitViolationsTable: {
+		user: r.one.usersTable({
+			from: r.rateLimitViolationsTable.userId,
 			to: r.usersTable.id,
 		}),
 	},
