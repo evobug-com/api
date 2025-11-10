@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
 import { eq } from "drizzle-orm";
-import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
 import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema";
 import { type DbUser, violationsTable } from "../../db/schema";

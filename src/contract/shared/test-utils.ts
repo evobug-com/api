@@ -1,7 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { pushSchema } from "drizzle-kit/api-postgres";
 import { sql } from "drizzle-orm";
-import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core/db";
 import { drizzle } from "drizzle-orm/pglite";
 import type { PgliteDatabase } from "drizzle-orm/pglite/driver";

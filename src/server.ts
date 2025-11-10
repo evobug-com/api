@@ -1,6 +1,7 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import { CORSPlugin } from "@orpc/server/plugins";
-import { type BunSQLDatabase, drizzle } from "drizzle-orm/bun-sql";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
+import { drizzle } from "drizzle-orm/bun-sql";
 import { router } from "./contract/router.ts";
 import { createTestDatabase } from "./contract/shared/test-utils.ts";
 import { relations } from "./db/relations.ts";
