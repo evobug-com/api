@@ -1,9 +1,21 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "442b7e08-df31-442c-80be-71e512f724ad",
-  "prevIds": ["f89c408d-4b93-426e-8bc5-93090ae92780"],
+  "id": "6f9e2cdb-5cef-49d4-94ed-58c4b292e7ed",
+  "prevIds": [
+    "442b7e08-df31-442c-80be-71e512f724ad"
+  ],
   "ddl": [
+    {
+      "values": [
+        "stock_us",
+        "stock_intl",
+        "crypto"
+      ],
+      "name": "asset_type",
+      "entityType": "enums",
+      "schema": "public"
+    },
     {
       "values": [
         "pending",
@@ -38,6 +50,15 @@
     },
     {
       "values": [
+        "buy",
+        "sell"
+      ],
+      "name": "transaction_type",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
         "user",
         "admin",
         "moderator"
@@ -67,6 +88,36 @@
     {
       "isRlsEnabled": false,
       "name": "events",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "investment_assets",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "investment_portfolios",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "investment_price_cache",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "investment_sync_log",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "investment_transactions",
       "entityType": "tables",
       "schema": "public"
     },
@@ -151,7 +202,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -268,7 +319,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -361,7 +412,7 @@
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
-      "default": "{}",
+      "default": "'{}'",
       "generated": null,
       "identity": null,
       "name": "metadata",
@@ -385,7 +436,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -489,7 +540,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -632,7 +683,748 @@
     {
       "type": "serial",
       "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "varchar(50)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "symbol",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "asset_type",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "assetType",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "varchar(100)",
+      "typeSchema": null,
       "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "exchange",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "varchar(10)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'USD'",
+      "generated": null,
+      "identity": null,
+      "name": "currency",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "varchar(50)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "apiSource",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "varchar(100)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "apiSymbol",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "true",
+      "generated": null,
+      "identity": null,
+      "name": "isActive",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "100",
+      "generated": null,
+      "identity": null,
+      "name": "minInvestment",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "description",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "varchar(500)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "logoUrl",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "userId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "assetId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "quantity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "averageBuyPrice",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "totalInvested",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "realizedGains",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "firstPurchaseAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "lastTransactionAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updatedAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "assetId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "price",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "previousClose",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "change24h",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "changePercent24h",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "type": "varchar(50)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "volume24h",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "type": "varchar(50)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "marketCap",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "priceTimestamp",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "type": "varchar(50)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "syncType",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "type": "varchar(50)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "apiSource",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "assetsUpdated",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "apiCallsUsed",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "success",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "errorMessage",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "durationMs",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "userId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "assetId",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "transaction_type",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "transactionType",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "quantity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "pricePerUnit",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "subtotal",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "150",
+      "generated": null,
+      "identity": null,
+      "name": "feePercent",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "feeAmount",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "totalAmount",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "costBasis",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "realizedGain",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "notes",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "createdAt",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -712,7 +1504,7 @@
       "typeSchema": null,
       "notNull": false,
       "dimensions": 0,
-      "default": "[]",
+      "default": "'[]'",
       "generated": null,
       "identity": null,
       "name": "editedContents",
@@ -775,7 +1567,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -970,7 +1762,7 @@
     {
       "type": "uuid",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": "gen_random_uuid()",
       "generated": null,
@@ -1126,7 +1918,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -1204,7 +1996,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -1360,7 +2152,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -1555,7 +2347,7 @@
     {
       "type": "integer",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -1685,7 +2477,7 @@
     {
       "type": "integer",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -1802,7 +2594,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -1854,7 +2646,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -1958,7 +2750,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -2296,7 +3088,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -2413,7 +3205,7 @@
     {
       "type": "serial",
       "typeSchema": null,
-      "notNull": false,
+      "notNull": true,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -2954,6 +3746,363 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "events"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "symbol",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "investment_assets_symbol_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "assetType",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "isActive",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "investment_assets_type_active_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "apiSource",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "investment_assets_api_source_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_assets"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "userId",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "assetId",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "portfolio_user_asset_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "userId",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "portfolio_user_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "assetId",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "portfolio_asset_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "assetId",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "priceTimestamp",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "price_cache_asset_timestamp_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "priceTimestamp",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "price_cache_recent_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "createdAt",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "sync_log_created_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "apiSource",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "createdAt",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "sync_log_api_source_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "success",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "createdAt",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "sync_log_success_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_sync_log"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "userId",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "transactions_user_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "assetId",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "transactions_asset_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "userId",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "createdAt",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "transactions_user_created_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "transactionType",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "transactions_type_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "investment_transactions"
     },
     {
       "nameExplicit": true,
@@ -3579,6 +4728,91 @@
     {
       "nameExplicit": false,
       "columns": [
+        "userId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "users",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "investment_portfolios_userId_users_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "assetId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "investment_assets",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "investment_portfolios_assetId_investment_assets_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "investment_portfolios"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "assetId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "investment_assets",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "investment_price_cache_assetId_investment_assets_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "investment_price_cache"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "userId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "users",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "investment_transactions_userId_users_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "assetId"
+      ],
+      "schemaTo": "public",
+      "tableTo": "investment_assets",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "investment_transactions_assetId_investment_assets_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "investment_transactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
         "user_id"
       ],
       "schemaTo": "public",
@@ -3876,6 +5110,56 @@
         "id"
       ],
       "nameExplicit": false,
+      "name": "investment_assets_pkey",
+      "schema": "public",
+      "table": "investment_assets",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "investment_portfolios_pkey",
+      "schema": "public",
+      "table": "investment_portfolios",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "investment_price_cache_pkey",
+      "schema": "public",
+      "table": "investment_price_cache",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "investment_sync_log_pkey",
+      "schema": "public",
+      "table": "investment_sync_log",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "investment_transactions_pkey",
+      "schema": "public",
+      "table": "investment_transactions",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
       "name": "messages_logs_pkey",
       "schema": "public",
       "table": "messages_logs",
@@ -4015,6 +5299,17 @@
     {
       "nameExplicit": false,
       "columns": [
+        "symbol"
+      ],
+      "nullsNotDistinct": false,
+      "name": "investment_assets_symbol_key",
+      "schema": "public",
+      "table": "investment_assets",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
         "userId"
       ],
       "nullsNotDistinct": false,
@@ -4046,28 +5341,28 @@
       "entityType": "uniques"
     },
     {
-      "value": "\"products\".\"price\" >= 0",
+      "value": "\"price\" >= 0",
       "name": "products_price_positive",
       "entityType": "checks",
       "schema": "public",
       "table": "products"
     },
     {
-      "value": "\"products\".\"shippingCost\" >= 0",
+      "value": "\"shippingCost\" >= 0",
       "name": "products_shipping_positive",
       "entityType": "checks",
       "schema": "public",
       "table": "products"
     },
     {
-      "value": "\"user_reviews\".\"rating\" >= 1 AND \"user_reviews\".\"rating\" <= 5",
+      "value": "\"rating\" >= 1 AND \"rating\" <= 5",
       "name": "user_reviews_rating_range",
       "entityType": "checks",
       "schema": "public",
       "table": "user_reviews"
     },
     {
-      "value": "LENGTH(\"user_reviews\".\"text\") >= 50 AND LENGTH(\"user_reviews\".\"text\") <= 500",
+      "value": "LENGTH(\"text\") >= 50 AND LENGTH(\"text\") <= 500",
       "name": "user_reviews_text_length",
       "entityType": "checks",
       "schema": "public",

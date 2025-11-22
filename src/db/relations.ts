@@ -57,6 +57,16 @@ export const relations = defineRelations(schema, (r) => ({
 			to: r.rateLimitViolationsTable.userId,
 		}),
 
+		// Investment relations
+		investmentPortfolios: r.many.investmentPortfoliosTable({
+			from: r.usersTable.id,
+			to: r.investmentPortfoliosTable.userId,
+		}),
+		investmentTransactions: r.many.investmentTransactionsTable({
+			from: r.usersTable.id,
+			to: r.investmentTransactionsTable.userId,
+		}),
+
 		// Relations where user is the issuer/reviewer/lifter
 		issuedViolations: r.many.violationsTable({
 			from: r.usersTable.id,
@@ -249,6 +259,58 @@ export const relations = defineRelations(schema, (r) => ({
 		user: r.one.usersTable({
 			from: r.rateLimitViolationsTable.userId,
 			to: r.usersTable.id,
+		}),
+	},
+
+	// ============================================================================
+	// INVESTMENT SYSTEM RELATIONS
+	// ============================================================================
+
+	// Investment Assets Relations
+	investmentAssetsTable: {
+		priceCache: r.many.investmentPriceCacheTable({
+			from: r.investmentAssetsTable.id,
+			to: r.investmentPriceCacheTable.assetId,
+		}),
+		portfolios: r.many.investmentPortfoliosTable({
+			from: r.investmentAssetsTable.id,
+			to: r.investmentPortfoliosTable.assetId,
+		}),
+		transactions: r.many.investmentTransactionsTable({
+			from: r.investmentAssetsTable.id,
+			to: r.investmentTransactionsTable.assetId,
+		}),
+	},
+
+	// Investment Price Cache Relations
+	investmentPriceCacheTable: {
+		asset: r.one.investmentAssetsTable({
+			from: r.investmentPriceCacheTable.assetId,
+			to: r.investmentAssetsTable.id,
+		}),
+	},
+
+	// Investment Portfolios Relations
+	investmentPortfoliosTable: {
+		user: r.one.usersTable({
+			from: r.investmentPortfoliosTable.userId,
+			to: r.usersTable.id,
+		}),
+		asset: r.one.investmentAssetsTable({
+			from: r.investmentPortfoliosTable.assetId,
+			to: r.investmentAssetsTable.id,
+		}),
+	},
+
+	// Investment Transactions Relations
+	investmentTransactionsTable: {
+		user: r.one.usersTable({
+			from: r.investmentTransactionsTable.userId,
+			to: r.usersTable.id,
+		}),
+		asset: r.one.investmentAssetsTable({
+			from: r.investmentTransactionsTable.assetId,
+			to: r.investmentAssetsTable.id,
 		}),
 	},
 }));

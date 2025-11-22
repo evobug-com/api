@@ -54,6 +54,8 @@ import {
 } from "./suspensions";
 // User Management
 import { createUser, getUser, updateUser } from "./users";
+// Investment System
+import { buyAsset, getPortfolio, getTransactionHistory, listAvailableAssets, sellAsset } from "./investments";
 // Violations System
 import {
 	bulkExpireViolations,
@@ -185,6 +187,15 @@ export const router = {
 			rateLimit: {
 				recordViolation: recordRateLimitViolation, // POST /users/anticheat/rateLimit/recordViolation
 			},
+		},
+
+		// Investment endpoints
+		investments: {
+			buy: buyAsset, // POST /users/investments/buy
+			sell: sellAsset, // POST /users/investments/sell
+			portfolio: getPortfolio, // GET /users/investments/portfolio
+			assets: listAvailableAssets, // GET /users/investments/assets
+			transactions: getTransactionHistory, // GET /users/investments/transactions
 		},
 	},
 	//

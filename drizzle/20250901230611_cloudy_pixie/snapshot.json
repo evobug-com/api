@@ -1,6 +1,8 @@
 {
 	"id": "97f52bd4-9908-460f-a0fd-7ba2ca4eef21",
-	"prevId": "00000000-0000-0000-0000-000000000000",
+	"prevIds": [
+		"00000000-0000-0000-0000-000000000000"
+	],
 	"version": "8",
 	"dialect": "postgres",
 	"ddl": [
@@ -11,7 +13,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "event_participants_pkey",
 			"schema": "public",
@@ -62,10 +66,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "registeredAt",
@@ -104,10 +105,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "createdAt",
@@ -120,10 +118,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "updatedAt",
@@ -203,10 +198,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["eventId"],
+			"columns": [
+				"eventId"
+			],
 			"schemaTo": "public",
 			"tableTo": "events",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "CASCADE",
 			"name": "event_participants_eventId_events_id_fk",
@@ -216,10 +215,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["userId"],
+			"columns": [
+				"userId"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "CASCADE",
 			"name": "event_participants_userId_users_id_fk",
@@ -234,7 +237,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "events_pkey",
 			"schema": "public",
@@ -350,10 +355,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "true"
-			},
+			"default": "true",
 			"generated": null,
 			"identity": null,
 			"name": "isActive",
@@ -366,10 +368,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "createdAt",
@@ -382,10 +381,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "updatedAt",
@@ -395,7 +391,9 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["name"],
+			"columns": [
+				"name"
+			],
 			"nullsNotDistinct": false,
 			"name": "events_name_unique",
 			"schema": "public",
@@ -451,7 +449,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "messages_logs_pkey",
 			"schema": "public",
@@ -528,10 +528,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "editCount",
@@ -544,10 +541,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "createdAt",
@@ -560,10 +554,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "updatedAt",
@@ -591,7 +582,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "orders_pkey",
 			"schema": "public",
@@ -642,10 +635,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "1"
-			},
+			"default": "1",
 			"generated": null,
 			"identity": null,
 			"name": "amount",
@@ -671,10 +661,7 @@
 			"typeSchema": "public",
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "'completed'"
-			},
+			"default": "'completed'",
 			"generated": null,
 			"identity": null,
 			"name": "status",
@@ -778,10 +765,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "createdAt",
@@ -794,10 +778,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "updatedAt",
@@ -870,10 +851,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["user_id"],
+			"columns": [
+				"user_id"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "CASCADE",
 			"name": "orders_user_id_users_id_fk",
@@ -883,10 +868,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["productId"],
+			"columns": [
+				"productId"
+			],
 			"schemaTo": "public",
 			"tableTo": "products",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "RESTRICT",
 			"name": "orders_productId_products_id_fk",
@@ -901,7 +890,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "products_pkey",
 			"schema": "public",
@@ -913,10 +904,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "gen_random_uuid()"
-			},
+			"default": "gen_random_uuid()",
 			"generated": null,
 			"identity": null,
 			"name": "id",
@@ -981,10 +969,7 @@
 			"typeSchema": null,
 			"notNull": false,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "'[\"S\",\"M\",\"L\",\"XL\",\"XXL\"]'::jsonb"
-			},
+			"default": "'[\"S\",\"M\",\"L\",\"XL\",\"XXL\"]'::jsonb",
 			"generated": null,
 			"identity": null,
 			"name": "sizes",
@@ -997,10 +982,7 @@
 			"typeSchema": null,
 			"notNull": false,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "1"
-			},
+			"default": "1",
 			"generated": null,
 			"identity": null,
 			"name": "maxPerUser",
@@ -1013,10 +995,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "true"
-			},
+			"default": "true",
 			"generated": null,
 			"identity": null,
 			"name": "isActive",
@@ -1029,10 +1008,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "false"
-			},
+			"default": "false",
 			"generated": null,
 			"identity": null,
 			"name": "requiresDelivery",
@@ -1045,10 +1021,7 @@
 			"typeSchema": null,
 			"notNull": false,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "shippingCost",
@@ -1061,10 +1034,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "createdAt",
@@ -1077,10 +1047,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "updatedAt",
@@ -1130,7 +1097,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "suspensions_pkey",
 			"schema": "public",
@@ -1233,10 +1202,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "startedAt",
@@ -1275,10 +1241,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "createdAt",
@@ -1291,10 +1254,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "updatedAt",
@@ -1395,10 +1355,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["userId"],
+			"columns": [
+				"userId"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "CASCADE",
 			"name": "suspensions_userId_users_id_fk",
@@ -1408,10 +1372,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["liftedBy"],
+			"columns": [
+				"liftedBy"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "SET NULL",
 			"name": "suspensions_liftedBy_users_id_fk",
@@ -1421,10 +1389,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["issuedBy"],
+			"columns": [
+				"issuedBy"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "SET NULL",
 			"name": "suspensions_issuedBy_users_id_fk",
@@ -1439,7 +1411,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "user_reviews_pkey",
 			"schema": "public",
@@ -1535,10 +1509,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["userId"],
+			"columns": [
+				"userId"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "CASCADE",
 			"name": "user_reviews_userId_users_id_fk",
@@ -1553,7 +1531,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "user_stats_log_pkey",
 			"schema": "public",
@@ -1617,10 +1597,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "xpEarned",
@@ -1633,10 +1610,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "coinsEarned",
@@ -1649,10 +1623,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "createdAt",
@@ -1665,10 +1636,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "updatedAt",
@@ -1699,10 +1667,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["userId"],
+			"columns": [
+				"userId"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "CASCADE",
 			"name": "user_stats_log_userId_users_id_fk",
@@ -1717,7 +1689,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "user_stats_pkey",
 			"schema": "public",
@@ -1755,10 +1729,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "dailyStreak",
@@ -1771,10 +1742,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "maxDailyStreak",
@@ -1800,10 +1768,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "workCount",
@@ -1829,10 +1794,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "messagesCount",
@@ -1858,10 +1820,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "serverTagStreak",
@@ -1874,10 +1833,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "maxServerTagStreak",
@@ -1916,10 +1872,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "coinsCount",
@@ -1932,10 +1885,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "xpCount",
@@ -1948,10 +1898,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "0"
-			},
+			"default": "0",
 			"generated": null,
 			"identity": null,
 			"name": "boostCount",
@@ -1977,10 +1924,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "updatedAt",
@@ -1990,7 +1934,9 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["userId"],
+			"columns": [
+				"userId"
+			],
 			"nullsNotDistinct": false,
 			"name": "user_stats_userId_unique",
 			"schema": "public",
@@ -1999,10 +1945,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["userId"],
+			"columns": [
+				"userId"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "CASCADE",
 			"name": "user_stats_userId_users_id_fk",
@@ -2017,7 +1967,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "users_pkey",
 			"schema": "public",
@@ -2107,10 +2059,7 @@
 			"typeSchema": "public",
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "'user'"
-			},
+			"default": "'user'",
 			"generated": null,
 			"identity": null,
 			"name": "role",
@@ -2123,10 +2072,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "createdAt",
@@ -2139,10 +2085,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "updatedAt",
@@ -2152,7 +2095,9 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["username"],
+			"columns": [
+				"username"
+			],
 			"nullsNotDistinct": false,
 			"name": "users_username_unique",
 			"schema": "public",
@@ -2161,7 +2106,9 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["email"],
+			"columns": [
+				"email"
+			],
 			"nullsNotDistinct": false,
 			"name": "users_email_unique",
 			"schema": "public",
@@ -2217,7 +2164,9 @@
 			"entityType": "tables"
 		},
 		{
-			"columns": ["id"],
+			"columns": [
+				"id"
+			],
 			"nameExplicit": false,
 			"name": "violations_pkey",
 			"schema": "public",
@@ -2385,10 +2334,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "issuedAt",
@@ -2414,10 +2360,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "false"
-			},
+			"default": "false",
 			"generated": null,
 			"identity": null,
 			"name": "reviewRequested",
@@ -2495,10 +2438,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "createdAt",
@@ -2511,10 +2451,7 @@
 			"typeSchema": null,
 			"notNull": true,
 			"dimensions": 0,
-			"default": {
-				"type": "unknown",
-				"value": "now()"
-			},
+			"default": "now()",
 			"generated": null,
 			"identity": null,
 			"name": "updatedAt",
@@ -2608,10 +2545,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["user_id"],
+			"columns": [
+				"user_id"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "CASCADE",
 			"name": "violations_user_id_users_id_fk",
@@ -2621,10 +2562,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["issuedBy"],
+			"columns": [
+				"issuedBy"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "SET NULL",
 			"name": "violations_issuedBy_users_id_fk",
@@ -2634,10 +2579,14 @@
 		},
 		{
 			"nameExplicit": false,
-			"columns": ["reviewedBy"],
+			"columns": [
+				"reviewedBy"
+			],
 			"schemaTo": "public",
 			"tableTo": "users",
-			"columnsTo": ["id"],
+			"columnsTo": [
+				"id"
+			],
 			"onUpdate": "NO ACTION",
 			"onDelete": "SET NULL",
 			"name": "violations_reviewedBy_users_id_fk",
@@ -2646,25 +2595,43 @@
 			"entityType": "fks"
 		},
 		{
-			"values": ["pending", "completed", "cancelled", "refunded"],
+			"values": [
+				"pending",
+				"completed",
+				"cancelled",
+				"refunded"
+			],
 			"name": "order_status",
 			"schema": "public",
 			"entityType": "enums"
 		},
 		{
-			"values": ["APPROVED", "REJECTED", "PENDING"],
+			"values": [
+				"APPROVED",
+				"REJECTED",
+				"PENDING"
+			],
 			"name": "review_outcome",
 			"schema": "public",
 			"entityType": "enums"
 		},
 		{
-			"values": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+			"values": [
+				"LOW",
+				"MEDIUM",
+				"HIGH",
+				"CRITICAL"
+			],
 			"name": "severity",
 			"schema": "public",
 			"entityType": "enums"
 		},
 		{
-			"values": ["user", "admin", "moderator"],
+			"values": [
+				"user",
+				"admin",
+				"moderator"
+			],
 			"name": "user_role",
 			"schema": "public",
 			"entityType": "enums"

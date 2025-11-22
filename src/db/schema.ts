@@ -27,6 +27,8 @@ export const userRoleEnum = pgEnum("user_role", ["user", "admin", "moderator"]);
 export const severityEnum = pgEnum("severity", ["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
 export const reviewOutcomeEnum = pgEnum("review_outcome", ["APPROVED", "REJECTED", "PENDING"]);
 export const orderStatusEnum = pgEnum("order_status", ["pending", "completed", "cancelled", "refunded"]);
+export const assetTypeEnum = pgEnum("asset_type", ["stock_us", "stock_intl", "crypto"]);
+export const transactionTypeEnum = pgEnum("transaction_type", ["buy", "sell"]);
 
 // ============================================================================
 // USERS TABLE - Core user data
@@ -747,3 +749,232 @@ export const insertRateLimitViolationsSchema = createInsertSchema(rateLimitViola
 
 export type DbRateLimitViolation = typeof rateLimitViolationsTable.$inferSelect;
 export type InsertDbRateLimitViolation = typeof rateLimitViolationsTable.$inferInsert;
+
+// ============================================================================
+// INVESTMENT SYSTEM TABLES - Virtual stock/crypto investing
+// ============================================================================
+
+// ============================================================================
+// INVESTMENT_ASSETS TABLE - Available stocks/crypto for trading
+// ============================================================================
+export const investmentAssetsTable = pgTable(
+	"investment_assets",
+	{
+		id: serial().primaryKey(),
+
+		// Asset identification
+		symbol: varchar({ length: 50 }).notNull().unique(), // e.g., "AAPL", "BTC-USD"
+		name: varchar({ length: 255 }).notNull(), // e.g., "Apple Inc.", "Bitcoin"
+		assetType: assetTypeEnum().notNull(),
+
+		// Market/Exchange info
+		exchange: varchar({ length: 100 }), // e.g., "NASDAQ", "NYSE", "Binance"
+		currency: varchar({ length: 10 }).notNull().default("USD"), // Base currency
+
+		// API mapping
+		apiSource: varchar({ length: 50 }).notNull(), // "twelvedata", "coingecko"
+		apiSymbol: varchar({ length: 100 }).notNull(), // API-specific symbol format
+
+		// Trading config
+		isActive: boolean().notNull().default(true),
+		minInvestment: integer().notNull().default(100), // Minimum coins to invest
+
+		// Metadata
+		description: text(),
+		logoUrl: varchar({ length: 500 }),
+
+		createdAt: timestamptz().notNull().defaultNow(),
+		updatedAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		index("investment_assets_symbol_idx").on(table.symbol),
+		index("investment_assets_type_active_idx").on(table.assetType, table.isActive),
+		index("investment_assets_api_source_idx").on(table.apiSource),
+	],
+);
+
+export const investmentAssetsSchema = createSelectSchema(investmentAssetsTable);
+export const insertInvestmentAssetsSchema = createInsertSchema(investmentAssetsTable);
+export const updateInvestmentAssetsSchema = createUpdateSchema(investmentAssetsTable);
+
+export type DbInvestmentAsset = typeof investmentAssetsTable.$inferSelect;
+export type InsertDbInvestmentAsset = typeof investmentAssetsTable.$inferInsert;
+
+// ============================================================================
+// INVESTMENT_PRICE_CACHE TABLE - Cache prices to minimize API calls
+// ============================================================================
+export const investmentPriceCacheTable = pgTable(
+	"investment_price_cache",
+	{
+		id: serial().primaryKey(),
+
+		assetId: integer()
+			.notNull()
+			.references(() => investmentAssetsTable.id, { onDelete: "cascade" }),
+
+		// Price data (stored as integers to avoid floating point issues)
+		// All prices in cents: $150.25 = 15025
+		price: integer().notNull(), // Price in cents/smallest unit
+		previousClose: integer(), // For calculating daily change
+		change24h: integer(), // Change in cents
+		changePercent24h: integer(), // Change as basis points (525 = 5.25%)
+
+		// Volume and market data
+		volume24h: varchar({ length: 50 }), // As string to handle large numbers
+		marketCap: varchar({ length: 50 }),
+
+		// Timestamps
+		priceTimestamp: timestamptz().notNull(), // When price was fetched from API
+		createdAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		index("price_cache_asset_timestamp_idx").on(table.assetId, table.priceTimestamp),
+		index("price_cache_recent_idx").on(table.priceTimestamp),
+	],
+);
+
+export const investmentPriceCacheSchema = createSelectSchema(investmentPriceCacheTable);
+export const insertInvestmentPriceCacheSchema = createInsertSchema(investmentPriceCacheTable);
+
+export type DbInvestmentPriceCache = typeof investmentPriceCacheTable.$inferSelect;
+export type InsertDbInvestmentPriceCache = typeof investmentPriceCacheTable.$inferInsert;
+
+// ============================================================================
+// INVESTMENT_PORTFOLIOS TABLE - User investment holdings
+// ============================================================================
+export const investmentPortfoliosTable = pgTable(
+	"investment_portfolios",
+	{
+		id: serial().primaryKey(),
+
+		userId: integer()
+			.notNull()
+			.references(() => usersTable.id, { onDelete: "cascade" }),
+
+		assetId: integer()
+			.notNull()
+			.references(() => investmentAssetsTable.id, { onDelete: "restrict" }),
+
+		// Holdings (quantity stored with 3 decimal precision: 10.5 shares = 10500)
+		quantity: integer().notNull().default(0), // Shares/tokens * 1000
+		averageBuyPrice: integer().notNull(), // Average price paid in cents
+
+		// Calculated values
+		totalInvested: integer().notNull().default(0), // Total coins spent buying
+		realizedGains: integer().notNull().default(0), // Profit/loss from sells
+
+		// Timestamps
+		firstPurchaseAt: timestamptz().notNull().defaultNow(),
+		lastTransactionAt: timestamptz().notNull().defaultNow(),
+		updatedAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		// Unique constraint: one portfolio entry per user per asset
+		uniqueIndex("portfolio_user_asset_idx").on(table.userId, table.assetId),
+		index("portfolio_user_idx").on(table.userId),
+		index("portfolio_asset_idx").on(table.assetId),
+	],
+);
+
+export const investmentPortfoliosSchema = createSelectSchema(investmentPortfoliosTable);
+export const insertInvestmentPortfoliosSchema = createInsertSchema(investmentPortfoliosTable);
+export const updateInvestmentPortfoliosSchema = createUpdateSchema(investmentPortfoliosTable);
+
+export type DbInvestmentPortfolio = typeof investmentPortfoliosTable.$inferSelect;
+export type InsertDbInvestmentPortfolio = typeof investmentPortfoliosTable.$inferInsert;
+
+export type DbInvestmentPortfolioWithRelations = DbInvestmentPortfolio & {
+	user: DbUser;
+	asset: DbInvestmentAsset;
+};
+
+// ============================================================================
+// INVESTMENT_TRANSACTIONS TABLE - Buy/sell transaction history
+// ============================================================================
+export const investmentTransactionsTable = pgTable(
+	"investment_transactions",
+	{
+		id: serial().primaryKey(),
+
+		userId: integer()
+			.notNull()
+			.references(() => usersTable.id, { onDelete: "cascade" }),
+
+		assetId: integer()
+			.notNull()
+			.references(() => investmentAssetsTable.id, { onDelete: "restrict" }),
+
+		// Transaction details
+		transactionType: transactionTypeEnum().notNull(),
+		quantity: integer().notNull(), // Shares/tokens * 1000
+		pricePerUnit: integer().notNull(), // Price in cents at time of transaction
+
+		// Costs
+		subtotal: integer().notNull(), // quantity * pricePerUnit (in coins)
+		feePercent: integer().notNull().default(150), // 1.5% = 150 basis points
+		feeAmount: integer().notNull(), // Calculated fee in coins
+		totalAmount: integer().notNull(), // Final amount (subtotal + fee for buy, subtotal - fee for sell)
+
+		// Profit tracking (for sells)
+		costBasis: integer(), // What was paid for these shares (for sells only)
+		realizedGain: integer(), // Profit/loss on this transaction (for sells only)
+
+		// Metadata
+		notes: text(),
+
+		createdAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		index("transactions_user_idx").on(table.userId),
+		index("transactions_asset_idx").on(table.assetId),
+		index("transactions_user_created_idx").on(table.userId, table.createdAt),
+		index("transactions_type_idx").on(table.transactionType),
+	],
+);
+
+export const investmentTransactionsSchema = createSelectSchema(investmentTransactionsTable);
+export const insertInvestmentTransactionsSchema = createInsertSchema(investmentTransactionsTable);
+
+export type DbInvestmentTransaction = typeof investmentTransactionsTable.$inferSelect;
+export type InsertDbInvestmentTransaction = typeof investmentTransactionsTable.$inferInsert;
+
+export type DbInvestmentTransactionWithRelations = DbInvestmentTransaction & {
+	user: DbUser;
+	asset: DbInvestmentAsset;
+};
+
+// ============================================================================
+// INVESTMENT_SYNC_LOG TABLE - Track API sync operations
+// ============================================================================
+export const investmentSyncLogTable = pgTable(
+	"investment_sync_log",
+	{
+		id: serial().primaryKey(),
+
+		// Sync details
+		syncType: varchar({ length: 50 }).notNull(), // "scheduled", "manual"
+		apiSource: varchar({ length: 50 }).notNull(), // "twelvedata", "coingecko"
+
+		// Results
+		assetsUpdated: integer().notNull().default(0),
+		apiCallsUsed: integer().notNull().default(0),
+		success: boolean().notNull(),
+		errorMessage: text(),
+
+		// Performance
+		durationMs: integer(), // How long the sync took
+
+		createdAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		index("sync_log_created_idx").on(table.createdAt),
+		index("sync_log_api_source_idx").on(table.apiSource, table.createdAt),
+		index("sync_log_success_idx").on(table.success, table.createdAt),
+	],
+);
+
+export const investmentSyncLogSchema = createSelectSchema(investmentSyncLogTable);
+export const insertInvestmentSyncLogSchema = createInsertSchema(investmentSyncLogTable);
+
+export type DbInvestmentSyncLog = typeof investmentSyncLogTable.$inferSelect;
+export type InsertDbInvestmentSyncLog = typeof investmentSyncLogTable.$inferInsert;
