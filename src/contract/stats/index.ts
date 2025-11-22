@@ -973,6 +973,137 @@ export const claimWork = base
 	});
 
 /**
+ * Grant custom reward for storytelling/quest features
+ * Allows granting arbitrary coins and XP for narrative events
+ * - Still respects economy bans
+ * - Logs all rewards for audit trail
+ * - Handles level-ups
+ * - Reduces suspicious score for legitimate activity
+ */
+export const grantReward = base
+	.input(
+		z.object({
+			userId: z.number(),
+			coins: z.number().int(), // Can be negative for story events (e.g., getting robbed)
+			xp: z.number().int().min(0), // XP cannot be negative - we never take XP away
+			activityType: z.string().min(1).max(50), // e.g., "quest_completion", "story_event"
+			notes: z.string().min(1).max(500), // Description of the reward
+		}),
+	)
+	.errors({
+		ECONOMY_BANNED: {
+			message: "Economy access suspended",
+		},
+		INSUFFICIENT_FUNDS: {
+			message: "Insufficient funds",
+			data: z.object({
+				currentCoins: z.number(),
+				requiredCoins: z.number(),
+			}),
+		},
+		DATABASE_ERROR: {
+			message: "Database operation failed",
+		},
+	})
+	.output(
+		z.object({
+			statsLog: userStatsLogSchema,
+			updatedStats: userStatsSchema,
+			message: z.string(),
+			levelUp: z
+				.object({
+					newLevel: z.number(),
+					oldLevel: z.number(),
+					bonusCoins: z.number(),
+				})
+				.optional(),
+			levelProgress: levelProgressSchema,
+		}),
+	)
+	.handler(async ({ input, context, errors }) => {
+		// Get user stats to check economy ban status
+		const userStats = await context.db.query.userStatsTable.findFirst({
+			where: { userId: input.userId },
+		});
+
+		if (!userStats) {
+			throw errors.NOT_FOUND({
+				message: "User stats not found for the given user / grantReward",
+			});
+		}
+
+		// Check if user is economy banned
+		if (userStats.economyBannedUntil && userStats.economyBannedUntil > new Date()) {
+			throw errors.ECONOMY_BANNED({
+				message: "Your economy access is temporarily suspended due to suspicious activity",
+			});
+		}
+
+		// Calculate new totals
+		const newCoins = userStats.coinsCount + input.coins;
+		const newXp = userStats.xpCount + input.xp;
+
+		// Prevent negative coin balance
+		if (newCoins < 0) {
+			throw errors.INSUFFICIENT_FUNDS({
+				data: {
+					currentCoins: userStats.coinsCount,
+					requiredCoins: Math.abs(input.coins),
+				},
+			});
+		}
+
+		// Check for level up
+		const levelUp = processLevelUp(userStats.xpCount, newXp);
+
+		return await context.db.transaction(async (db) => {
+			// Reduce suspicious score by 2 for successful reward claim (reward good behavior)
+			const newSuspiciousScore = Math.max(0, userStats.suspiciousBehaviorScore - 2);
+
+			const [updatedStats] = await db
+				.update(userStatsTable)
+				.set({
+					coinsCount: newCoins + (levelUp?.bonusCoins ?? 0),
+					xpCount: newXp,
+					suspiciousBehaviorScore: newSuspiciousScore,
+					updatedAt: new Date(),
+				})
+				.where(eq(userStatsTable.userId, input.userId))
+				.returning();
+
+			if (!updatedStats) {
+				throw errors.DATABASE_ERROR();
+			}
+
+			// Log the reward activity
+			const logData: InsertDbUserStatsLog = {
+				userId: input.userId,
+				activityType: input.activityType,
+				notes: `${input.notes}${levelUp ? ` (LEVEL UP to ${levelUp.newLevel}!)` : ""}`,
+				xpEarned: input.xp,
+				coinsEarned: input.coins + (levelUp?.bonusCoins ?? 0),
+			};
+
+			const [statsLog] = await db.insert(userStatsLogTable).values(logData).returning();
+
+			if (!statsLog) {
+				throw errors.DATABASE_ERROR();
+			}
+
+			// Get level progress
+			const levelProgress = getLevelProgress(newXp);
+
+			return {
+				statsLog,
+				updatedStats,
+				message: `Reward granted! You ${input.coins >= 0 ? "earned" : "lost"} ${Math.abs(input.coins)} coins and gained ${input.xp} XP.${levelUp ? ` You leveled up to level ${levelUp.newLevel} and earned ${levelUp.bonusCoins} bonus coins!` : ""}`,
+				levelUp,
+				levelProgress,
+			};
+		});
+	});
+
+/**
  * Server Tag Streak check and update
  * Checks if user has a server tag and updates their streak accordingly
  */
