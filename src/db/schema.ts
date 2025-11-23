@@ -237,7 +237,6 @@ export const userStatsTable = pgTable("user_stats", {
 	// Daily activity tracking
 	dailyStreak: integer().notNull().default(0),
 	maxDailyStreak: integer().notNull().default(0),
-	lastDailyAt: timestamptz(),
 
 	// Work activity
 	workCount: integer().notNull().default(0),

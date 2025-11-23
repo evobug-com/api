@@ -56,7 +56,6 @@ describe("Users", () => {
 				xpCount: 0,
 				dailyStreak: 0,
 				maxDailyStreak: 0,
-				lastDailyAt: null,
 				workCount: 0,
 				lastWorkAt: null,
 				messagesCount: 0,
@@ -361,7 +360,6 @@ describe("Users", () => {
 			expect(stats[0]?.workCount).toBe(0);
 			expect(stats[0]?.messagesCount).toBe(0);
 			expect(stats[0]?.boostCount).toBe(0);
-			expect(stats[0]?.lastDailyAt).toBeNull();
 			expect(stats[0]?.lastWorkAt).toBeNull();
 			expect(stats[0]?.lastMessageAt).toBeNull();
 			expect(stats[0]?.boostExpires).toBeNull();
