@@ -1,7 +1,7 @@
 /**
  * Investment Price Sync Service
  * Syncs prices from Twelve Data API to database cache
- * Runs every 3 hours (8 times per day)
+ * Runs every 4 hours (6 times per day)
  */
 
 import { eq } from "drizzle-orm";

@@ -35,9 +35,9 @@ db = drizzle({
 await db.execute("SELECT 1");
 
 // Investment price sync scheduler
-// Runs every 3 hours (8 times per day): 0:00, 3:00, 6:00, 9:00, 12:00, 15:00, 18:00, 21:00
-console.log("⏰ Starting investment price sync scheduler (every 3 hours)");
-cron.schedule("0 */3 * * *", async () => {
+// Runs every 4 hours (6 times per day): 0:00, 4:00, 8:00, 12:00, 16:00, 20:00
+console.log("⏰ Starting investment price sync scheduler (every 4 hours)");
+cron.schedule("0 */4 * * *", async () => {
 	console.log("[Cron] Starting scheduled investment price sync...");
 	try {
 		const syncService = new InvestmentSyncService(db);

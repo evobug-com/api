@@ -236,7 +236,7 @@ export class TwelveDataClient {
 		}
 
 		try {
-			const data = await this.makeRequest<TwelveDataQuoteResponse>("/quote", { symbol });
+			const data = await this.makeRequest<TwelveDataQuoteResponse>("/quote", { symbol, interval: "4h" });
 
 			this.trackCall();
 
