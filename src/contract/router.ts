@@ -5,6 +5,18 @@
  */
 
 import {
+	createAchievement,
+	deleteAchievement,
+	deleteUserAchievementProgress,
+	getAchievement,
+	getUserAchievementProgress,
+	listAchievements,
+	listUserAchievements,
+	unlockAchievement,
+	updateAchievement,
+	upsertUserAchievement,
+} from "./achievements";
+import {
 	analyzeTimingPatterns,
 	calculateBehavioralScore,
 	calculateSuspicionScore,
@@ -206,6 +218,27 @@ export const router = {
 			assets: listAvailableAssets, // GET /users/investments/assets
 			transactions: getTransactionHistory, // GET /users/investments/transactions
 			sync: syncPrices, // POST /users/investments/sync - Manual price sync (admin only)
+		},
+
+		// Achievements endpoints
+		achievements: {
+			// Achievement definitions (CRUD)
+			definitions: {
+				create: createAchievement, // POST /users/achievements/definitions
+				list: listAchievements, // GET /users/achievements/definitions
+				get: getAchievement, // GET /users/achievements/definitions/{id}
+				update: updateAchievement, // PUT /users/achievements/definitions/{id}
+				delete: deleteAchievement, // DELETE /users/achievements/definitions/{id}
+			},
+
+			// User progress tracking
+			progress: {
+				upsert: upsertUserAchievement, // POST /users/achievements/progress
+				get: getUserAchievementProgress, // GET /users/achievements/progress
+				list: listUserAchievements, // GET /users/achievements/progress/list
+				unlock: unlockAchievement, // PUT /users/achievements/progress/unlock
+				delete: deleteUserAchievementProgress, // DELETE /users/achievements/progress
+			},
 		},
 	},
 	//

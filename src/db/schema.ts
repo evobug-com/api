@@ -1,3 +1,5 @@
+// noinspection JSUnusedGlobalSymbols
+
 import { sql } from "drizzle-orm";
 import {
 	boolean,
@@ -977,3 +979,78 @@ export const insertInvestmentSyncLogSchema = createInsertSchema(investmentSyncLo
 
 export type DbInvestmentSyncLog = typeof investmentSyncLogTable.$inferSelect;
 export type InsertDbInvestmentSyncLog = typeof investmentSyncLogTable.$inferInsert;
+
+// ============================================================================
+// ACHIEVEMENTS SYSTEM TABLES
+// ============================================================================
+
+// ============================================================================
+// ACHIEVEMENTS TABLE - Achievement definitions
+// ============================================================================
+export const achievementsTable = pgTable("achievements", {
+	id: serial().primaryKey(),
+
+	name: varchar({ length: 255 }).notNull(),
+	description: text(),
+
+	createdAt: timestamptz().notNull().defaultNow(),
+	updatedAt: timestamptz().notNull().defaultNow(),
+});
+
+export const achievementsSchema = createSelectSchema(achievementsTable);
+export const insertAchievementsSchema = createInsertSchema(achievementsTable);
+export const updateAchievementsSchema = createUpdateSchema(achievementsTable);
+
+export type DbAchievement = typeof achievementsTable.$inferSelect;
+export type InsertDbAchievement = typeof achievementsTable.$inferInsert;
+
+// ============================================================================
+// USER_ACHIEVEMENTS TABLE - User progress and unlocks
+// ============================================================================
+export const userAchievementsTable = pgTable(
+	"user_achievements",
+	{
+		id: serial().primaryKey(),
+
+		userId: integer()
+			.notNull()
+			.references(() => usersTable.id, { onDelete: "cascade" }),
+
+		achievementId: integer()
+			.notNull()
+			.references(() => achievementsTable.id, { onDelete: "cascade" }),
+
+		// When null = in progress or not started
+		// When set = achievement unlocked
+		unlockedAt: timestamptz(),
+
+		// Flexible JSON field for progress tracking
+		// Examples: { "count": 47, "target": 100 }
+		//           { "streak": 5, "best": 10 }
+		//           { "value": 1500.50, "transactions": 12 }
+		metadata: jsonb().$type<Record<string, unknown>>().default({}),
+
+		createdAt: timestamptz().notNull().defaultNow(),
+		updatedAt: timestamptz().notNull().defaultNow(),
+	},
+	(table) => [
+		// Prevent duplicates - one entry per user per achievement
+		uniqueIndex("user_achievements_user_achievement_idx").on(table.userId, table.achievementId),
+
+		index("user_achievements_userId_idx").on(table.userId),
+		index("user_achievements_achievementId_idx").on(table.achievementId),
+		index("user_achievements_unlockedAt_idx").on(table.unlockedAt),
+	],
+);
+
+export const userAchievementsSchema = createSelectSchema(userAchievementsTable);
+export const insertUserAchievementsSchema = createInsertSchema(userAchievementsTable);
+export const updateUserAchievementsSchema = createUpdateSchema(userAchievementsTable);
+
+export type DbUserAchievement = typeof userAchievementsTable.$inferSelect;
+export type InsertDbUserAchievement = typeof userAchievementsTable.$inferInsert;
+
+export type DbUserAchievementWithRelations = DbUserAchievement & {
+	user: DbUser;
+	achievement: DbAchievement;
+};
