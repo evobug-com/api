@@ -5,3 +5,8 @@
 
 # Tests
 - All code must have tests.
+
+# Database
+- All tables must be prefixed with 'public.' schema
+- To create custom migrations: drizzle-kit generate --custom --name=seed-users
+- Columns in database are camelCase and not snake_case.
