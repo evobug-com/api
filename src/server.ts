@@ -2,41 +2,61 @@ import { RPCHandler } from "@orpc/server/fetch";
 import { CORSPlugin } from "@orpc/server/plugins";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
 import { drizzle } from "drizzle-orm/bun-sql";
+import cron from "node-cron";
 import { router } from "./contract/router.ts";
 import { createTestDatabase } from "./contract/shared/test-utils.ts";
 import { relations } from "./db/relations.ts";
 import type { DbUser } from "./db/schema.ts";
 import * as schema from "./db/schema.ts";
+import { InvestmentSyncService } from "./services/investment-sync.ts";
 
 // env variable USE_TEMP_DATABASE can be set to "true" or switch --temp-database to use a temporary in-memory database
-const isTempDatabase = process.env.USE_TEMP_DATABASE === "true" || Bun.argv.includes("--temp-database");
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
-if (process.env.DATABASE_URL === undefined && !isTempDatabase)
+if (process.env.DATABASE_URL === undefined)
 	throw new Error("DATABASE_URL environment variable is not set. Please set it to your database URL.");
 
 let client: Bun.SQL | undefined;
 let db: BunSQLDatabase<typeof schema, typeof relations>;
 
-if (isTempDatabase) {
-	console.warn("⚠️ WARNING: Using a temporary database. All data will be lost when the server stops.");
-	db = await createTestDatabase();
-} else {
-	client = new Bun.SQL(process.env.DATABASE_URL as string, {
-		max: 20, // Maximum 20 concurrent connections
-		idleTimeout: 30, // Close idle connections after 30s
-		maxLifetime: 3600, // Max connection lifetime 1 hour
-		connectionTimeout: 10, // Connection timeout 10s
-	});
-	db = drizzle({
-		client: client as Bun.SQL,
-		schema,
-		relations,
-	});
-}
+client = new Bun.SQL(process.env.DATABASE_URL as string, {
+	max: 20, // Maximum 20 concurrent connections
+	idleTimeout: 30, // Close idle connections after 30s
+	maxLifetime: 3600, // Max connection lifetime 1 hour
+	connectionTimeout: 10, // Connection timeout 10s
+});
+db = drizzle({
+	client: client as Bun.SQL,
+	schema,
+	relations,
+});
 
 // To detect if we are connected to the database, if not it will throw an error
 await db.execute("SELECT 1");
+
+// Investment price sync scheduler
+// Runs every 3 hours (8 times per day): 0:00, 3:00, 6:00, 9:00, 12:00, 15:00, 18:00, 21:00
+console.log("⏰ Starting investment price sync scheduler (every 3 hours)");
+cron.schedule("0 */3 * * *", async () => {
+	console.log("[Cron] Starting scheduled investment price sync...");
+	try {
+		const syncService = new InvestmentSyncService(db);
+		const result = await syncService.syncAllAssets();
+
+		if (result.success) {
+			console.log(
+				`[Cron] ✅ Sync completed: ${result.assetsUpdated} assets updated, ${result.apiCallsUsed} API calls used, took ${result.durationMs}ms`,
+			);
+		} else {
+			console.error(
+				`[Cron] ❌ Sync failed: ${result.errors.length} errors, ${result.assetsUpdated} assets updated, took ${result.durationMs}ms`,
+			);
+			console.error("[Cron] Errors:", result.errors);
+		}
+	} catch (error) {
+		console.error("[Cron] Fatal error during price sync:", error);
+	}
+});
 
 const handler = new RPCHandler(router, {
 	plugins: [new CORSPlugin()],

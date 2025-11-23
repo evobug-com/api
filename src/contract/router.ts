@@ -55,7 +55,14 @@ import {
 // User Management
 import { createUser, getUser, updateUser } from "./users";
 // Investment System
-import { buyAsset, getPortfolio, getTransactionHistory, listAvailableAssets, sellAsset } from "./investments";
+import {
+	buyAsset,
+	getPortfolio,
+	getTransactionHistory,
+	listAvailableAssets,
+	sellAsset,
+	syncPrices,
+} from "./investments";
 // Violations System
 import {
 	bulkExpireViolations,
@@ -196,6 +203,7 @@ export const router = {
 			portfolio: getPortfolio, // GET /users/investments/portfolio
 			assets: listAvailableAssets, // GET /users/investments/assets
 			transactions: getTransactionHistory, // GET /users/investments/transactions
+			sync: syncPrices, // POST /users/investments/sync - Manual price sync (admin only)
 		},
 	},
 	//

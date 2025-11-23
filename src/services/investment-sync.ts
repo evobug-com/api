@@ -5,7 +5,7 @@
  */
 
 import { eq } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
 import {
 	investmentAssetsTable,
 	investmentPriceCacheTable,
@@ -13,10 +13,12 @@ import {
 	type InsertDbInvestmentPriceCache,
 	type InsertDbInvestmentSyncLog,
 } from "../db/schema.ts";
+import * as schema from "../db/schema.ts";
+import type { relations } from "../db/relations.ts";
 import { getTwelveDataClient } from "../utils/twelvedata-client.ts";
 
 export class InvestmentSyncService {
-	constructor(private db: NodePgDatabase<any>) {}
+	constructor(private db: BunSQLDatabase<typeof schema, typeof relations>) {}
 
 	/**
 	 * Sync all active assets

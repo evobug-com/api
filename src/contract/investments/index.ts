@@ -12,7 +12,11 @@ import {
 	type InsertDbInvestmentTransaction,
 	userStatsTable,
 } from "../../db/schema.ts";
+import { InvestmentSyncService } from "../../services/investment-sync.ts";
 import { base } from "../shared/os.ts";
+import type {BunSQLDatabase} from "drizzle-orm/bun-sql/postgres";
+import type * as schema from "../../db/schema.ts";
+import type {relations} from "../../db/relations.ts";
 
 // Transaction fee: 1.5%
 const TRANSACTION_FEE_BASIS_POINTS = 150; // 1.5% = 150 basis points
@@ -27,10 +31,14 @@ function calculateFee(amount: number): number {
 /**
  * Get latest cached price for an asset
  */
-async function getLatestPrice(context: { db: any }, assetId: number) {
+async function getLatestPrice(context: { db: BunSQLDatabase<typeof schema, typeof relations> }, assetId: number) {
 	const latestPrice = await context.db.query.investmentPriceCacheTable.findFirst({
-		where: eq(investmentPriceCacheTable.assetId, assetId),
-		orderBy: [desc(investmentPriceCacheTable.priceTimestamp)],
+		where: {
+			assetId: assetId,
+		},
+		orderBy: {
+			priceTimestamp: 'desc'
+		}
 	});
 
 	return latestPrice;
@@ -145,7 +153,7 @@ export const buyAsset = base
 		// Quantity stored with 3 decimal precision
 		const quantity = Math.floor((coinsAfterFee * 1000 * 100) / pricePerUnit);
 
-		const subtotal = Math.floor((quantity * pricePerUnit) / 1000);
+		const subtotal = Math.floor((quantity * pricePerUnit) / 100000);
 		const totalCost = subtotal + fee;
 
 		// 5. Check user has enough coins
@@ -349,12 +357,12 @@ export const sellAsset = base
 		const pricePerUnit = priceData.price;
 
 		// 5. Calculate proceeds, fees, and profit/loss
-		const subtotal = Math.floor((quantityToSell * pricePerUnit) / 1000);
+		const subtotal = Math.floor((quantityToSell * pricePerUnit) / 100000);
 		const fee = calculateFee(subtotal);
 		const netProceeds = subtotal - fee;
 
 		// Calculate cost basis for these shares
-		const costBasis = Math.floor((quantityToSell * portfolio.averageBuyPrice) / 1000);
+		const costBasis = Math.floor((quantityToSell * portfolio.averageBuyPrice) / 100000);
 		const realizedGain = netProceeds - costBasis;
 
 		// 6. Execute transaction
@@ -386,7 +394,7 @@ export const sellAsset = base
 
 			if (newQuantity > 0) {
 				// Update portfolio
-				const newTotalInvested = Math.floor((newQuantity * portfolio.averageBuyPrice) / 1000);
+				const newTotalInvested = Math.floor((newQuantity * portfolio.averageBuyPrice) / 100000);
 
 				const [updated] = await db
 					.update(investmentPortfoliosTable)
@@ -494,7 +502,7 @@ export const getPortfolio = base
 				const priceData = await getLatestPrice(context, portfolio.assetId);
 
 				const currentPrice = priceData?.price || portfolio.averageBuyPrice;
-				const currentValue = Math.floor((portfolio.quantity * currentPrice) / 1000);
+				const currentValue = Math.floor((portfolio.quantity * currentPrice) / 100000);
 				const unrealizedGain = currentValue - portfolio.totalInvested;
 				const unrealizedGainPercent =
 					portfolio.totalInvested > 0 ? (unrealizedGain / portfolio.totalInvested) * 100 : 0;
@@ -597,6 +605,8 @@ export const listAvailableAssets = base
 			}),
 		);
 
+		console.log({assetsWithPrices})
+
 		return {
 			assets: assetsWithPrices,
 			total: totalCount,
@@ -674,5 +684,69 @@ export const getTransactionHistory = base
 		return {
 			transactions: results,
 			total: totalCount,
+		};
+	});
+
+/**
+ * Sync prices endpoint
+ * POST /investments/sync
+ * Manually trigger price sync from Twelve Data API
+ */
+export const syncPrices = base
+	.input(
+		z.object({
+			adminKey: z.string().min(1),
+		}),
+	)
+	.output(
+		z.object({
+			success: z.boolean(),
+			assetsUpdated: z.number(),
+			apiCallsUsed: z.number(),
+			durationMs: z.number(),
+		}),
+	)
+	.errors({
+		UNAUTHORIZED: { message: "Invalid admin key" },
+		SYNC_FAILED: {
+			message: "Price sync failed",
+			data: z.object({
+				errors: z.array(z.string()),
+			}),
+		},
+	})
+	.handler(async ({ input, context, errors }) => {
+		// Verify admin key
+		const expectedKey = process.env.ADMIN_SYNC_KEY || "change-me-in-production";
+		if (input.adminKey !== expectedKey) {
+			console.warn("[SyncPrices] Unauthorized sync attempt");
+			throw errors.UNAUTHORIZED();
+		}
+
+		console.log("[SyncPrices] Manual sync triggered - starting in background");
+
+		// Start sync in background (don't await - prevents timeout)
+		const service = new InvestmentSyncService(context.db);
+		service.syncAllAssets().then((result) => {
+			if (result.success) {
+				console.log(
+					`[SyncPrices] ✅ Background sync completed: ${result.assetsUpdated} assets updated, ${result.apiCallsUsed} API calls, ${result.durationMs}ms`,
+				);
+			} else {
+				console.error(
+					`[SyncPrices] ❌ Background sync failed: ${result.errors.length} errors`,
+					result.errors,
+				);
+			}
+		}).catch((error) => {
+			console.error("[SyncPrices] Fatal error in background sync:", error);
+		});
+
+		// Return immediately (sync runs in background)
+		return {
+			success: true,
+			assetsUpdated: 0, // Will be logged to console when complete
+			apiCallsUsed: 0,
+			durationMs: 0,
 		};
 	});

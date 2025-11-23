@@ -1,10 +1,11 @@
-import { os } from "@orpc/server";
+import {onError, os, ValidationError} from "@orpc/server";
 import type { HeadersInit } from "bun";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
 import { z } from "zod";
 import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema.ts";
 import type { DbUser } from "../../db/schema.ts";
+import {ORPCError} from "@orpc/client";
 
 export const base = os
 	.$context<{
@@ -48,4 +49,35 @@ export const base = os
 		INTERNAL_ERROR: {
 			message: "An internal error occurred",
 		},
-	});
+	}).use(onError((error) => {
+		console.log(error)
+		if (
+			error instanceof ORPCError
+			&& error.code === 'BAD_REQUEST'
+			&& error.cause instanceof ValidationError
+		) {
+			// If you only use Zod you can safely cast to ZodIssue[]
+			const zodError = new z.ZodError(error.cause.issues as z.core.$ZodIssue[])
+
+			throw new ORPCError('INPUT_VALIDATION_FAILED', {
+				status: 422,
+				message: z.prettifyError(zodError),
+				data: z.flattenError(zodError),
+				cause: error.cause,
+			})
+		}
+
+		if (
+			error instanceof ORPCError
+			&& error.code === 'INTERNAL_SERVER_ERROR'
+			&& error.cause instanceof ValidationError
+		) {
+			throw new ORPCError('OUTPUT_VALIDATION_FAILED', {
+				cause: error.cause,
+			})
+		}
+	}))
+
+
+
+;
