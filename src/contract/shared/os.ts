@@ -50,7 +50,11 @@ export const base = os
 			message: "An internal error occurred",
 		},
 	}).use(onError((error) => {
-		console.log(error)
+
+		if(process.env.NODE_ENV !== "production") {
+			console.log(error)
+		}
+
 		if (
 			error instanceof ORPCError
 			&& error.code === 'BAD_REQUEST'
