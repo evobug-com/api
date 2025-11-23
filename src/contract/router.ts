@@ -32,6 +32,7 @@ import {
 	claimDaily,
 	claimWork,
 	getServerTagStreak,
+	getTodaysWorkCount,
 	grantReward,
 	leaderboard,
 	logCaptchaAttempt,
@@ -129,6 +130,7 @@ export const router = {
 			work: {
 				cooldown: userWorkCooldown,
 				claim: claimWork,
+				todayCount: getTodaysWorkCount,
 			},
 			reward: {
 				grant: grantReward, // POST /users/stats/reward/grant - Grant custom rewards for storytelling/quests

@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { z } from "zod";
 import {
 	captchaLogsTable,
@@ -970,6 +970,43 @@ export const claimWork = base
 				levelProgress: levelProgress,
 			};
 		});
+	});
+
+/**
+ * Get today's work count for a user
+ * Used by bot to check for achievement milestones
+ */
+export const getTodaysWorkCount = base
+	.input(
+		z.object({
+			userId: z.number(),
+		}),
+	)
+	.output(
+		z.object({
+			count: z.number(),
+			todayStart: z.date(),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		const todayStart = new Date();
+		todayStart.setHours(0, 0, 0, 0);
+
+		const todaysWorkActivities = await context.db
+			.select()
+			.from(userStatsLogTable)
+			.where(
+				and(
+					eq(userStatsLogTable.userId, input.userId),
+					eq(userStatsLogTable.activityType, "work"),
+					gte(userStatsLogTable.createdAt, todayStart),
+				),
+			);
+
+		return {
+			count: todaysWorkActivities.length,
+			todayStart,
+		};
 	});
 
 /**
