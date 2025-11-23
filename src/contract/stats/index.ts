@@ -1,4 +1,4 @@
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { z } from "zod";
 import {
 	captchaLogsTable,
@@ -992,6 +992,9 @@ export const getTodaysWorkCount = base
 		const todayStart = new Date();
 		todayStart.setHours(0, 0, 0, 0);
 
+		const tomorrowStart = new Date(todayStart);
+		tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
 		const todaysWorkActivities = await context.db
 			.select()
 			.from(userStatsLogTable)
@@ -1000,6 +1003,7 @@ export const getTodaysWorkCount = base
 					eq(userStatsLogTable.userId, input.userId),
 					eq(userStatsLogTable.activityType, "work"),
 					gte(userStatsLogTable.createdAt, todayStart),
+					lt(userStatsLogTable.createdAt, tomorrowStart),
 				),
 			);
 

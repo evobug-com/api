@@ -17,7 +17,7 @@ describe("getTodaysWorkCount functionality", () => {
 	beforeEach(async () => {
 		db = await createTestDatabase();
 
-		// Create test users for our tests
+		// Create test users for our tests (createUser automatically creates user_stats)
 		const user1 = await call(
 			createUser,
 			{
@@ -38,21 +38,24 @@ describe("getTodaysWorkCount functionality", () => {
 		);
 		testUserId2 = user2.id;
 
-		// Initialize user stats for both users
-		await db.insert(userStatsTable).values([
-			{
-				userId: testUserId,
+		// Update user stats for both users (they already exist from createUser)
+		await db
+			.update(userStatsTable)
+			.set({
 				coinsCount: 100,
 				xpCount: 50,
 				workCount: 0,
-			},
-			{
-				userId: testUserId2,
+			})
+			.where(eq(userStatsTable.userId, testUserId));
+
+		await db
+			.update(userStatsTable)
+			.set({
 				coinsCount: 100,
 				xpCount: 50,
 				workCount: 0,
-			},
-		]);
+			})
+			.where(eq(userStatsTable.userId, testUserId2));
 	});
 
 	describe("Basic functionality", () => {
