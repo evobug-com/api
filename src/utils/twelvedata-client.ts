@@ -44,11 +44,15 @@ interface TwelveDataErrorResponse {
 	status: "error";
 }
 
+// Exchange rate: 1 USD = 25 CZK (fixed rate for bot economy)
+// 1 coin = 1 CZK in the bot's economy
+const USD_TO_CZK_RATE = 25;
+
 export interface AssetPrice {
 	symbol: string;
-	price: number; // In cents (multiply by 100)
-	previousClose?: number; // In cents
-	change24h?: number; // In cents
+	price: number; // In CZK coins (USD * 25 * 100 for precision)
+	previousClose?: number; // In CZK coins
+	change24h?: number; // In CZK coins
 	changePercent24h?: number; // As basis points (525 = 5.25%)
 	volume24h?: string;
 	timestamp: Date;
@@ -209,11 +213,12 @@ export class TwelveDataClient {
 			}
 
 			const priceData = data as TwelveDataPriceResponse;
-			const priceInCents = Math.floor(parseFloat(priceData.price) * 100);
+			// Convert USD to CZK coins: USD * 25 (exchange rate) * 100 (precision)
+			const priceInCoins = Math.floor(parseFloat(priceData.price) * USD_TO_CZK_RATE * 100);
 
 			return {
 				symbol: priceData.symbol,
-				price: priceInCents,
+				price: priceInCoins,
 				timestamp: new Date(priceData.timestamp * 1000),
 			};
 		} catch (error) {
@@ -243,10 +248,11 @@ export class TwelveDataClient {
 
 			const quote = data as TwelveDataQuoteResponse;
 
-			// Parse values (handle potential null values as per docs)
-			const price = Math.floor(parseFloat(quote.close || "0") * 100);
-			const previousClose = quote.previous_close ? Math.floor(parseFloat(quote.previous_close) * 100) : null;
-			const change = quote.change ? Math.floor(parseFloat(quote.change) * 100) : null;
+			// Parse values and convert USD to CZK coins (handle potential null values as per docs)
+			// USD * 25 (exchange rate) * 100 (precision)
+			const price = Math.floor(parseFloat(quote.close || "0") * USD_TO_CZK_RATE * 100);
+			const previousClose = quote.previous_close ? Math.floor(parseFloat(quote.previous_close) * USD_TO_CZK_RATE * 100) : null;
+			const change = quote.change ? Math.floor(parseFloat(quote.change) * USD_TO_CZK_RATE * 100) : null;
 			const changePercent = quote.percent_change ? Math.floor(parseFloat(quote.percent_change) * 100) : null;
 
 			return {
