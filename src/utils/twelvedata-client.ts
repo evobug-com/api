@@ -137,7 +137,7 @@ export class TwelveDataClient {
 	/**
 	 * Make a fetch request with proper authentication and error handling
 	 */
-	private async makeRequest<T>(
+	private async makeRequest<T extends object>(
 		endpoint: string,
 		params: Record<string, string>,
 		retries = 0,
