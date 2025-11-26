@@ -1,16 +1,17 @@
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
 	investmentAssetsSchema,
 	investmentAssetsTable,
 	investmentPortfoliosSchema,
 	investmentPortfoliosTable,
-	investmentPriceCacheTable,
 	investmentTransactionsSchema,
 	investmentTransactionsTable,
 	type InsertDbInvestmentPortfolio,
 	type InsertDbInvestmentTransaction,
+	userSchema,
 	userStatsTable,
+	usersTable,
 } from "../../db/schema.ts";
 import { InvestmentSyncService } from "../../services/investment-sync.ts";
 import { base } from "../shared/os.ts";
@@ -748,5 +749,229 @@ export const syncPrices = base
 			assetsUpdated: 0, // Will be logged to console when complete
 			apiCallsUsed: 0,
 			durationMs: 0,
+		};
+	});
+
+/**
+ * Investment leaderboard schema for output
+ */
+const investmentLeaderboardEntrySchema = z.object({
+	user: userSchema.pick({ id: true, discordId: true, guildedId: true, username: true }),
+	rank: z.number(),
+	totalInvested: z.number(),
+	currentValue: z.number(),
+	totalProfit: z.number(),
+	profitPercent: z.number(),
+	realizedGains: z.number(),
+	unrealizedGains: z.number(),
+});
+
+/**
+ * Investment leaderboard endpoint
+ * GET /users/investments/leaderboard
+ * Returns top investors ranked by selected metric
+ */
+export const investmentLeaderboard = base
+	.input(
+		z.object({
+			metric: z.enum(["totalValue", "totalProfit", "profitPercent"]).default("totalProfit"),
+			limit: z.number().int().min(1).max(100).default(10),
+		}),
+	)
+	.output(z.array(investmentLeaderboardEntrySchema))
+	.handler(async ({ input, context }) => {
+		const { metric, limit } = input;
+
+		// Get all users with portfolios and calculate their metrics
+		// We need to aggregate portfolio data and join with latest prices
+
+		// First, get all portfolios with their assets
+		const portfolios = await context.db
+			.select({
+				userId: investmentPortfoliosTable.userId,
+				assetId: investmentPortfoliosTable.assetId,
+				quantity: investmentPortfoliosTable.quantity,
+				totalInvested: investmentPortfoliosTable.totalInvested,
+				realizedGains: investmentPortfoliosTable.realizedGains,
+				averageBuyPrice: investmentPortfoliosTable.averageBuyPrice,
+			})
+			.from(investmentPortfoliosTable)
+			.where(gt(investmentPortfoliosTable.quantity, 0));
+
+		if (portfolios.length === 0) {
+			return [];
+		}
+
+		// Get latest prices for all assets
+		const assetIds = [...new Set(portfolios.map(p => p.assetId))];
+		const priceMap = new Map<number, number>();
+
+		for (const assetId of assetIds) {
+			const priceData = await getLatestPrice(context, assetId);
+			if (priceData) {
+				priceMap.set(assetId, priceData.price);
+			}
+		}
+
+		// Aggregate by user
+		const userMetrics = new Map<number, {
+			totalInvested: number;
+			currentValue: number;
+			realizedGains: number;
+			unrealizedGains: number;
+		}>();
+
+		for (const portfolio of portfolios) {
+			const currentPrice = priceMap.get(portfolio.assetId) || portfolio.averageBuyPrice;
+			const currentValue = Math.floor((portfolio.quantity * currentPrice) / 100000);
+			const unrealizedGain = currentValue - portfolio.totalInvested;
+
+			const existing = userMetrics.get(portfolio.userId) || {
+				totalInvested: 0,
+				currentValue: 0,
+				realizedGains: 0,
+				unrealizedGains: 0,
+			};
+
+			userMetrics.set(portfolio.userId, {
+				totalInvested: existing.totalInvested + portfolio.totalInvested,
+				currentValue: existing.currentValue + currentValue,
+				realizedGains: existing.realizedGains + portfolio.realizedGains,
+				unrealizedGains: existing.unrealizedGains + unrealizedGain,
+			});
+		}
+
+		// Convert to array with calculated metrics
+		const userIds = [...userMetrics.keys()];
+		const users = await context.db
+			.select({
+				id: usersTable.id,
+				discordId: usersTable.discordId,
+				guildedId: usersTable.guildedId,
+				username: usersTable.username,
+			})
+			.from(usersTable)
+			.where(sql`${usersTable.id} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`);
+
+		const userMap = new Map(users.map(u => [u.id, u]));
+
+		// Build leaderboard entries
+		const entries = [...userMetrics.entries()].map(([userId, metrics]) => {
+			const user = userMap.get(userId);
+			if (!user) return null;
+
+			const totalProfit = metrics.realizedGains + metrics.unrealizedGains;
+			const profitPercent = metrics.totalInvested > 0
+				? (totalProfit / metrics.totalInvested) * 100
+				: 0;
+
+			return {
+				user,
+				totalInvested: metrics.totalInvested,
+				currentValue: metrics.currentValue,
+				totalProfit,
+				profitPercent: Math.round(profitPercent * 100) / 100, // Round to 2 decimal places
+				realizedGains: metrics.realizedGains,
+				unrealizedGains: metrics.unrealizedGains,
+			};
+		}).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+		// Sort by selected metric
+		const sortedEntries = entries.sort((a, b) => {
+			switch (metric) {
+				case "totalValue":
+					return b.currentValue - a.currentValue;
+				case "totalProfit":
+					return b.totalProfit - a.totalProfit;
+				case "profitPercent":
+					return b.profitPercent - a.profitPercent;
+				default:
+					return b.totalProfit - a.totalProfit;
+			}
+		});
+
+		// Add ranks and limit
+		return sortedEntries.slice(0, limit).map((entry, index) => ({
+			...entry,
+			rank: index + 1,
+		}));
+	});
+
+/**
+ * Get user's investment summary
+ * GET /users/{userId}/investments/summary
+ * Returns aggregated investment stats for a single user
+ */
+export const getInvestmentSummary = base
+	.input(
+		z.object({
+			userId: z.number(),
+		}),
+	)
+	.output(
+		z.object({
+			totalInvested: z.number(),
+			currentValue: z.number(),
+			totalProfit: z.number(),
+			profitPercent: z.number(),
+			realizedGains: z.number(),
+			unrealizedGains: z.number(),
+			holdingsCount: z.number(),
+		}),
+	)
+	.handler(async ({ input, context }) => {
+		// Get user's portfolios
+		const portfolios = await context.db
+			.select()
+			.from(investmentPortfoliosTable)
+			.where(eq(investmentPortfoliosTable.userId, input.userId));
+
+		if (portfolios.length === 0) {
+			return {
+				totalInvested: 0,
+				currentValue: 0,
+				totalProfit: 0,
+				profitPercent: 0,
+				realizedGains: 0,
+				unrealizedGains: 0,
+				holdingsCount: 0,
+			};
+		}
+
+		let totalInvested = 0;
+		let currentValue = 0;
+		let realizedGains = 0;
+		let unrealizedGains = 0;
+		let holdingsCount = 0;
+
+		for (const portfolio of portfolios) {
+			if (portfolio.quantity > 0) {
+				holdingsCount++;
+			}
+
+			const priceData = await getLatestPrice(context, portfolio.assetId);
+			const currentPrice = priceData?.price || portfolio.averageBuyPrice;
+			const portfolioValue = Math.floor((portfolio.quantity * currentPrice) / 100000);
+			const unrealizedGain = portfolioValue - portfolio.totalInvested;
+
+			totalInvested += portfolio.totalInvested;
+			currentValue += portfolioValue;
+			realizedGains += portfolio.realizedGains;
+			unrealizedGains += unrealizedGain;
+		}
+
+		const totalProfit = realizedGains + unrealizedGains;
+		const profitPercent = totalInvested > 0
+			? Math.round((totalProfit / totalInvested) * 10000) / 100
+			: 0;
+
+		return {
+			totalInvested,
+			currentValue,
+			totalProfit,
+			profitPercent,
+			realizedGains,
+			unrealizedGains,
+			holdingsCount,
 		};
 	});

@@ -52,6 +52,7 @@ import {
 	updateSuspiciousScore,
 	userDailyCooldown,
 	userStats,
+	userStatsWithInvestments,
 	userWorkCooldown,
 } from "./stats";
 // Review System (temporarily disabled - reviews are now part of violations table)
@@ -70,8 +71,10 @@ import { createUser, getUser, updateUser } from "./users";
 // Investment System
 import {
 	buyAsset,
+	getInvestmentSummary,
 	getPortfolio,
 	getTransactionHistory,
+	investmentLeaderboard,
 	listAvailableAssets,
 	sellAsset,
 	syncPrices,
@@ -135,6 +138,7 @@ export const router = {
 		//     },
 		stats: {
 			user: userStats,
+			userWithInvestments: userStatsWithInvestments, // GET /users/stats/userWithInvestments - user stats with investment summary
 			daily: {
 				cooldown: userDailyCooldown,
 				claim: claimDaily,
@@ -215,6 +219,8 @@ export const router = {
 			buy: buyAsset, // POST /users/investments/buy
 			sell: sellAsset, // POST /users/investments/sell
 			portfolio: getPortfolio, // GET /users/investments/portfolio
+			summary: getInvestmentSummary, // GET /users/investments/summary - aggregated investment stats
+			leaderboard: investmentLeaderboard, // GET /users/investments/leaderboard - top investors
 			assets: listAvailableAssets, // GET /users/investments/assets
 			transactions: getTransactionHistory, // GET /users/investments/transactions
 			sync: syncPrices, // POST /users/investments/sync - Manual price sync (admin only)
