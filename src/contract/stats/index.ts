@@ -184,6 +184,7 @@ export const userStatsWithInvestments = base
 		let totalInvested = 0;
 		let currentValue = 0;
 		let holdingsCount = 0;
+		let realizedGains = 0;
 
 		for (const portfolio of portfolios) {
 			if (portfolio.quantity > 0) {
@@ -201,9 +202,11 @@ export const userStatsWithInvestments = base
 
 			totalInvested += portfolio.totalInvested;
 			currentValue += portfolioValue;
+			realizedGains += portfolio.realizedGains;
 		}
 
-		const totalProfit = currentValue - totalInvested;
+		const unrealizedGains = currentValue - totalInvested;
+		const totalProfit = realizedGains + unrealizedGains;
 		const profitPercent = totalInvested > 0
 			? Math.round((totalProfit / totalInvested) * 10000) / 100
 			: 0;
