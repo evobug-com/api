@@ -1,17 +1,19 @@
 import { describe, expect, it } from "bun:test";
 import { ORPCError } from "@orpc/client";
 import { call } from "@orpc/server";
+import { eq } from "drizzle-orm";
 import {
 	investmentAssetsTable,
 	investmentPortfoliosTable,
 	investmentPriceCacheTable,
+	userStatsTable,
 	type InsertDbInvestmentAsset,
 	type InsertDbInvestmentPortfolio,
 	type InsertDbInvestmentPriceCache,
 } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { createUser } from "../users";
-import { getInvestmentSummary, investmentLeaderboard } from "./index.ts";
+import { buyAsset, getInvestmentSummary, investmentLeaderboard, sellAsset } from "./index.ts";
 import { userStatsWithInvestments } from "../stats";
 
 const db = await createTestDatabase();
@@ -613,6 +615,546 @@ describe("Investments", async () => {
 					message: "User not found for the given identifiers / userStatsWithInvestments",
 				}),
 			);
+		});
+	});
+
+	describe("Multi-transaction realistic scenarios", () => {
+		/**
+		 * Helper to update the price cache for an asset
+		 */
+		async function updatePrice(testDb: typeof db, assetId: number, newPrice: number) {
+			await testDb.insert(investmentPriceCacheTable).values({
+				assetId,
+				price: newPrice,
+				priceTimestamp: new Date(),
+			});
+		}
+
+		it("should correctly track profit/loss through 10 buy/sell transactions with price changes", async () => {
+			// Create fresh database for isolated test
+			const testDb = await createTestDatabase();
+			const ctx = createTestContext(testDb);
+
+			// Create user with 100,000 coins
+			const user = await call(createUser, { username: "activeTrader" }, ctx);
+			await testDb
+				.update(userStatsTable)
+				.set({ coinsCount: 100000 })
+				.where(eq(userStatsTable.userId, user.id));
+
+			// Create asset
+			const [asset] = await testDb.insert(investmentAssetsTable).values({
+				symbol: "TEST",
+				name: "Test Stock",
+				assetType: "stock_us",
+				apiSource: "twelvedata",
+				apiSymbol: "TEST",
+				isActive: true,
+				minInvestment: 100,
+			}).returning();
+
+			if (!asset) throw new Error("Failed to create asset");
+
+			// Initial price: $100 (10000 cents)
+			await updatePrice(testDb, asset.id, 10000);
+
+			// Track expected values
+			let expectedCoins = 100000;
+			let totalRealizedGains = 0;
+
+			// ===== TRANSACTION 1: Buy 1000 coins worth @ $100 =====
+			// Fee: 1.5% = 15 coins
+			// Coins after fee: 985 coins
+			// Shares: 985 * 1000 * 100 / 10000 = 9850 (9.85 shares)
+			// Subtotal: 9850 * 10000 / 100000 = 985
+			// Total cost: 985 + 15 = 1000
+			const buy1 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "TEST",
+				amountInCoins: 1000,
+			}, ctx);
+
+			expectedCoins -= buy1.transaction.totalAmount;
+			expect(buy1.portfolio.quantity).toBe(9850);
+			expect(buy1.portfolio.totalInvested).toBe(985);
+			expect(buy1.portfolio.averageBuyPrice).toBe(10000);
+
+			// ===== TRANSACTION 2: Price drops to $80, buy 2000 coins more =====
+			await updatePrice(testDb, asset.id, 8000);
+
+			// Fee: 30 coins
+			// Coins after fee: 1970
+			// Shares: 1970 * 1000 * 100 / 8000 = 24625 (24.625 shares)
+			// Subtotal: 24625 * 8000 / 100000 = 1970
+			const buy2 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "TEST",
+				amountInCoins: 2000,
+			}, ctx);
+
+			expectedCoins -= buy2.transaction.totalAmount;
+			// Total shares: 9850 + 24625 = 34475
+			expect(buy2.portfolio.quantity).toBe(34475);
+			// Total invested: 985 + 1970 = 2955
+			expect(buy2.portfolio.totalInvested).toBe(2955);
+			// New avg price: 2955 * 100 / (34475/1000) = 8573 (approx)
+			expect(buy2.portfolio.averageBuyPrice).toBeGreaterThan(8000);
+			expect(buy2.portfolio.averageBuyPrice).toBeLessThan(10000);
+
+			// ===== TRANSACTION 3: Price rises to $120, sell 50% =====
+			await updatePrice(testDb, asset.id, 12000);
+
+			const sell1 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "TEST",
+				sellType: "percentage",
+				percentage: 50,
+			}, ctx);
+
+			// Selling 50% = 17237 shares (floor of 34475/2)
+			expect(sell1.transaction.quantity).toBe(17237);
+			// Should have profit (selling at $120, avg cost ~$85.73)
+			expect(sell1.profitLoss).toBeGreaterThan(0);
+			totalRealizedGains += sell1.profitLoss;
+			expectedCoins += sell1.transaction.totalAmount;
+
+			// ===== TRANSACTION 4: Price crashes to $60, buy the dip =====
+			await updatePrice(testDb, asset.id, 6000);
+
+			const buy3 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "TEST",
+				amountInCoins: 5000,
+			}, ctx);
+
+			expectedCoins -= buy3.transaction.totalAmount;
+
+			// ===== TRANSACTION 5: Price stays at $60, buy more =====
+			const buy4 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "TEST",
+				amountInCoins: 3000,
+			}, ctx);
+
+			expectedCoins -= buy4.transaction.totalAmount;
+
+			// ===== TRANSACTION 6: Price rises to $90, sell 10 shares =====
+			await updatePrice(testDb, asset.id, 9000);
+
+			const sell2 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "TEST",
+				sellType: "quantity",
+				quantity: 10,
+			}, ctx);
+
+			// Selling 10 shares = 10000 quantity
+			expect(sell2.transaction.quantity).toBe(10000);
+			totalRealizedGains += sell2.profitLoss;
+			expectedCoins += sell2.transaction.totalAmount;
+
+			// ===== TRANSACTION 7: Price drops to $70, buy more =====
+			await updatePrice(testDb, asset.id, 7000);
+
+			const buy5 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "TEST",
+				amountInCoins: 2000,
+			}, ctx);
+
+			expectedCoins -= buy5.transaction.totalAmount;
+
+			// ===== TRANSACTION 8: Price rises to $150, sell 25% =====
+			await updatePrice(testDb, asset.id, 15000);
+
+			const portfolioBefore = buy5.portfolio;
+			const sell3 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "TEST",
+				sellType: "percentage",
+				percentage: 25,
+			}, ctx);
+
+			// Should have significant profit at $150
+			expect(sell3.profitLoss).toBeGreaterThan(0);
+			totalRealizedGains += sell3.profitLoss;
+			expectedCoins += sell3.transaction.totalAmount;
+
+			// ===== TRANSACTION 9: Price drops to $50 (crash!), buy aggressively =====
+			await updatePrice(testDb, asset.id, 5000);
+
+			const buy6 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "TEST",
+				amountInCoins: 10000,
+			}, ctx);
+
+			expectedCoins -= buy6.transaction.totalAmount;
+
+			// ===== TRANSACTION 10: Price recovers to $110, sell all =====
+			await updatePrice(testDb, asset.id, 11000);
+
+			const sellAll = await call(sellAsset, {
+				userId: user.id,
+				symbol: "TEST",
+				sellType: "all",
+			}, ctx);
+
+			totalRealizedGains += sellAll.profitLoss;
+			expectedCoins += sellAll.transaction.totalAmount;
+
+			// Portfolio should be deleted after selling all
+			expect(sellAll.portfolio).toBeUndefined();
+
+			// ===== VERIFY FINAL STATE =====
+
+			// Check user's final coin balance
+			const [finalStats] = await testDb
+				.select()
+				.from(userStatsTable)
+				.where(eq(userStatsTable.userId, user.id));
+
+			expect(finalStats).toBeDefined();
+			expect(finalStats!.coinsCount).toBe(expectedCoins);
+
+			// User should have made money overall (started with 100k)
+			// Note: Fees reduce profits, but good trades should still be profitable
+			console.log(`Final coins: ${finalStats!.coinsCount}, Started: 100000, Net: ${finalStats!.coinsCount - 100000}`);
+			console.log(`Total realized gains: ${totalRealizedGains}`);
+
+			// Investment summary should show 0 since all sold
+			const summary = await call(getInvestmentSummary, { userId: user.id }, ctx);
+			expect(summary.holdingsCount).toBe(0);
+			expect(summary.currentValue).toBe(0);
+			expect(summary.totalInvested).toBe(0);
+		});
+
+		it("should correctly handle buying at multiple price points and calculate average cost", async () => {
+			const testDb = await createTestDatabase();
+			const ctx = createTestContext(testDb);
+
+			const user = await call(createUser, { username: "dcaInvestor" }, ctx);
+			await testDb
+				.update(userStatsTable)
+				.set({ coinsCount: 50000 })
+				.where(eq(userStatsTable.userId, user.id));
+
+			const [asset] = await testDb.insert(investmentAssetsTable).values({
+				symbol: "DCA",
+				name: "DCA Test Stock",
+				assetType: "stock_us",
+				apiSource: "twelvedata",
+				apiSymbol: "DCA",
+				isActive: true,
+				minInvestment: 100,
+			}).returning();
+
+			if (!asset) throw new Error("Failed to create asset");
+
+			// Dollar-cost averaging: Buy same amount at different prices
+			const prices = [10000, 8000, 12000, 6000, 10000]; // $100, $80, $120, $60, $100
+			const buyAmount = 1000;
+
+			let totalShares = 0;
+			let totalInvested = 0;
+
+			for (const price of prices) {
+				await updatePrice(testDb, asset.id, price);
+
+				const result = await call(buyAsset, {
+					userId: user.id,
+					symbol: "DCA",
+					amountInCoins: buyAmount,
+				}, ctx);
+
+				totalShares = result.portfolio.quantity;
+				totalInvested = result.portfolio.totalInvested;
+			}
+
+			// Get final portfolio
+			const [portfolio] = await testDb
+				.select()
+				.from(investmentPortfoliosTable)
+				.where(eq(investmentPortfoliosTable.userId, user.id));
+
+			expect(portfolio).toBeDefined();
+			expect(portfolio!.quantity).toBe(totalShares);
+			expect(portfolio!.totalInvested).toBe(totalInvested);
+
+			// Average price should be between min and max prices
+			// More shares bought at lower prices, so avg should lean lower
+			expect(portfolio!.averageBuyPrice).toBeGreaterThan(6000);
+			expect(portfolio!.averageBuyPrice).toBeLessThan(12000);
+
+			// Current price at $100, check unrealized gains
+			const summary = await call(getInvestmentSummary, { userId: user.id }, ctx);
+			const avgCostPerShare = portfolio!.averageBuyPrice;
+
+			// If avg cost < 10000, we have unrealized gains; if > 10000, unrealized loss
+			if (avgCostPerShare < 10000) {
+				expect(summary.unrealizedGains).toBeGreaterThan(0);
+			} else {
+				expect(summary.unrealizedGains).toBeLessThanOrEqual(0);
+			}
+		});
+
+		it("should handle a losing investment scenario correctly", async () => {
+			const testDb = await createTestDatabase();
+			const ctx = createTestContext(testDb);
+
+			const user = await call(createUser, { username: "unluckyTrader" }, ctx);
+			await testDb
+				.update(userStatsTable)
+				.set({ coinsCount: 20000 })
+				.where(eq(userStatsTable.userId, user.id));
+
+			const [asset] = await testDb.insert(investmentAssetsTable).values({
+				symbol: "LOSE",
+				name: "Losing Stock",
+				assetType: "stock_us",
+				apiSource: "twelvedata",
+				apiSymbol: "LOSE",
+				isActive: true,
+				minInvestment: 100,
+			}).returning();
+
+			if (!asset) throw new Error("Failed to create asset");
+
+			// Buy at $100
+			await updatePrice(testDb, asset.id, 10000);
+			await call(buyAsset, {
+				userId: user.id,
+				symbol: "LOSE",
+				amountInCoins: 5000,
+			}, ctx);
+
+			// Price crashes to $30
+			await updatePrice(testDb, asset.id, 3000);
+
+			// Panic sell everything
+			const sellResult = await call(sellAsset, {
+				userId: user.id,
+				symbol: "LOSE",
+				sellType: "all",
+			}, ctx);
+
+			// Should have significant loss
+			expect(sellResult.profitLoss).toBeLessThan(0);
+
+			// Check final state
+			const summary = await call(getInvestmentSummary, { userId: user.id }, ctx);
+			expect(summary.holdingsCount).toBe(0);
+
+			// Get user stats
+			const [finalStats] = await testDb
+				.select()
+				.from(userStatsTable)
+				.where(eq(userStatsTable.userId, user.id));
+
+			// User should have less than they started with (20000)
+			// They invested 5000, got back much less due to 70% price drop + fees
+			expect(finalStats!.coinsCount).toBeLessThan(20000);
+			console.log(`Losing trade: Started 20000, ended ${finalStats!.coinsCount}, lost ${20000 - finalStats!.coinsCount}`);
+		});
+
+		it("should correctly track partial sells and remaining position", async () => {
+			const testDb = await createTestDatabase();
+			const ctx = createTestContext(testDb);
+
+			const user = await call(createUser, { username: "partialSeller" }, ctx);
+			await testDb
+				.update(userStatsTable)
+				.set({ coinsCount: 30000 })
+				.where(eq(userStatsTable.userId, user.id));
+
+			const [asset] = await testDb.insert(investmentAssetsTable).values({
+				symbol: "PART",
+				name: "Partial Sell Stock",
+				assetType: "stock_us",
+				apiSource: "twelvedata",
+				apiSymbol: "PART",
+				isActive: true,
+				minInvestment: 100,
+			}).returning();
+
+			if (!asset) throw new Error("Failed to create asset");
+
+			// Buy at $100
+			await updatePrice(testDb, asset.id, 10000);
+			const buyResult = await call(buyAsset, {
+				userId: user.id,
+				symbol: "PART",
+				amountInCoins: 10000,
+			}, ctx);
+
+			const initialQuantity = buyResult.portfolio.quantity;
+			const initialAvgPrice = buyResult.portfolio.averageBuyPrice;
+
+			// Price goes up to $150
+			await updatePrice(testDb, asset.id, 15000);
+
+			// Sell 25%
+			const sell1 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "PART",
+				sellType: "percentage",
+				percentage: 25,
+			}, ctx);
+
+			expect(sell1.profitLoss).toBeGreaterThan(0);
+			expect(sell1.portfolio).toBeDefined();
+			expect(sell1.portfolio!.realizedGains).toBe(sell1.profitLoss);
+
+			// Price goes down to $80
+			await updatePrice(testDb, asset.id, 8000);
+
+			// Sell another 25% (at a loss relative to buy price)
+			const sell2 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "PART",
+				sellType: "percentage",
+				percentage: 25,
+			}, ctx);
+
+			expect(sell2.profitLoss).toBeLessThan(0);
+			expect(sell2.portfolio).toBeDefined();
+			// Realized gains should be cumulative
+			expect(sell2.portfolio!.realizedGains).toBe(sell1.profitLoss + sell2.profitLoss);
+
+			// Check the summary includes realized gains
+			const summary = await call(getInvestmentSummary, { userId: user.id }, ctx);
+			expect(summary.realizedGains).toBe(sell1.profitLoss + sell2.profitLoss);
+			expect(summary.holdingsCount).toBe(1);
+
+			// Total profit = realized + unrealized
+			// Current price $80, remaining shares bought at ~$100 avg
+			expect(summary.unrealizedGains).toBeLessThan(0); // underwater at $80
+			expect(summary.totalProfit).toBe(summary.realizedGains + summary.unrealizedGains);
+		});
+
+		it("should handle rapid buy/sell at same price (testing fees impact)", async () => {
+			const testDb = await createTestDatabase();
+			const ctx = createTestContext(testDb);
+
+			const user = await call(createUser, { username: "feeChecker" }, ctx);
+			const startingCoins = 10000;
+			await testDb
+				.update(userStatsTable)
+				.set({ coinsCount: startingCoins })
+				.where(eq(userStatsTable.userId, user.id));
+
+			const [asset] = await testDb.insert(investmentAssetsTable).values({
+				symbol: "FEE",
+				name: "Fee Test Stock",
+				assetType: "stock_us",
+				apiSource: "twelvedata",
+				apiSymbol: "FEE",
+				isActive: true,
+				minInvestment: 100,
+			}).returning();
+
+			if (!asset) throw new Error("Failed to create asset");
+
+			// Fixed price throughout
+			await updatePrice(testDb, asset.id, 10000);
+
+			// Buy and immediately sell - should lose money due to fees
+			const buyResult = await call(buyAsset, {
+				userId: user.id,
+				symbol: "FEE",
+				amountInCoins: 5000,
+			}, ctx);
+
+			const sellResult = await call(sellAsset, {
+				userId: user.id,
+				symbol: "FEE",
+				sellType: "all",
+			}, ctx);
+
+			// Get final coins
+			const [finalStats] = await testDb
+				.select()
+				.from(userStatsTable)
+				.where(eq(userStatsTable.userId, user.id));
+
+			// Should have lost money due to fees (1.5% on buy + 1.5% on sell = ~3% total)
+			expect(finalStats!.coinsCount).toBeLessThan(startingCoins);
+
+			const feesLost = startingCoins - finalStats!.coinsCount;
+			// Fees should be approximately 3% of 5000 = 150 (but calculated on different amounts)
+			console.log(`Fees lost on round-trip trade: ${feesLost} coins (${(feesLost / 5000 * 100).toFixed(2)}% of trade)`);
+
+			// The realized loss should be negative due to fees
+			expect(sellResult.profitLoss).toBeLessThan(0);
+		});
+
+		it("should handle buying same asset multiple times then selling all at once", async () => {
+			const testDb = await createTestDatabase();
+			const ctx = createTestContext(testDb);
+
+			const user = await call(createUser, { username: "bulkSeller" }, ctx);
+			await testDb
+				.update(userStatsTable)
+				.set({ coinsCount: 50000 })
+				.where(eq(userStatsTable.userId, user.id));
+
+			const [asset] = await testDb.insert(investmentAssetsTable).values({
+				symbol: "BULK",
+				name: "Bulk Sell Stock",
+				assetType: "stock_us",
+				apiSource: "twelvedata",
+				apiSymbol: "BULK",
+				isActive: true,
+				minInvestment: 100,
+			}).returning();
+
+			if (!asset) throw new Error("Failed to create asset");
+
+			// 5 buys at different prices
+			const buyPrices = [10000, 11000, 9000, 12000, 8000];
+			let totalCoinsSpent = 0;
+
+			for (const price of buyPrices) {
+				await updatePrice(testDb, asset.id, price);
+				const result = await call(buyAsset, {
+					userId: user.id,
+					symbol: "BULK",
+					amountInCoins: 2000,
+				}, ctx);
+				totalCoinsSpent += result.transaction.totalAmount;
+			}
+
+			// Get portfolio before selling
+			const [portfolioBefore] = await testDb
+				.select()
+				.from(investmentPortfoliosTable)
+				.where(eq(investmentPortfoliosTable.userId, user.id));
+
+			const totalSharesBefore = portfolioBefore!.quantity;
+			const avgCostBefore = portfolioBefore!.averageBuyPrice;
+
+			// Sell all at $100
+			await updatePrice(testDb, asset.id, 10000);
+			const sellResult = await call(sellAsset, {
+				userId: user.id,
+				symbol: "BULK",
+				sellType: "all",
+			}, ctx);
+
+			// Verify all shares were sold
+			expect(sellResult.transaction.quantity).toBe(totalSharesBefore);
+
+			// Check profit/loss makes sense
+			// Avg cost should be around $10000 (mean of 10k,11k,9k,12k,8k = 10k)
+			// So selling at $10000 should be roughly break-even minus fees
+			console.log(`Avg buy price: ${avgCostBefore}, sell price: 10000, P/L: ${sellResult.profitLoss}`);
+
+			// Portfolio should be gone
+			expect(sellResult.portfolio).toBeUndefined();
+
+			// Summary should show nothing
+			const summary = await call(getInvestmentSummary, { userId: user.id }, ctx);
+			expect(summary.holdingsCount).toBe(0);
 		});
 	});
 });
