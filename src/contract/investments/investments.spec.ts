@@ -630,6 +630,328 @@ describe("Investments", async () => {
 			});
 		}
 
+		/**
+		 * Helper to verify all investment calculations at a given state
+		 */
+		async function verifyInvestmentState(
+			testDb: typeof db,
+			userId: number,
+			currentPrice: number,
+			expected: {
+				coins: number;
+				quantity: number;
+				totalInvested: number;
+				averageBuyPrice: number;
+				realizedGains: number;
+				currentValue: number;
+				unrealizedGains: number;
+				totalProfit: number;
+				profitPercent: number;
+			},
+			label: string,
+		) {
+			// Get user coins
+			const [userStats] = await testDb
+				.select()
+				.from(userStatsTable)
+				.where(eq(userStatsTable.userId, userId));
+
+			// Get portfolio
+			const [portfolio] = await testDb
+				.select()
+				.from(investmentPortfoliosTable)
+				.where(eq(investmentPortfoliosTable.userId, userId));
+
+			// Get summary
+			const summary = await call(getInvestmentSummary, { userId }, createTestContext(testDb));
+
+			console.log(`\n=== ${label} ===`);
+			console.log(`Current Price: $${(currentPrice / 100).toFixed(2)}`);
+			console.log(`User Coins: ${userStats?.coinsCount} (expected: ${expected.coins})`);
+
+			if (portfolio) {
+				console.log(`Portfolio Quantity: ${portfolio.quantity} (${(portfolio.quantity / 1000).toFixed(3)} shares) (expected: ${expected.quantity})`);
+				console.log(`Total Invested: ${portfolio.totalInvested} (expected: ${expected.totalInvested})`);
+				console.log(`Avg Buy Price: ${portfolio.averageBuyPrice} ($${(portfolio.averageBuyPrice / 100).toFixed(2)}) (expected: ${expected.averageBuyPrice})`);
+				console.log(`Realized Gains: ${portfolio.realizedGains} (expected: ${expected.realizedGains})`);
+			} else {
+				console.log(`Portfolio: NONE (sold all)`);
+			}
+
+			console.log(`Summary - Current Value: ${summary.currentValue} (expected: ${expected.currentValue})`);
+			console.log(`Summary - Unrealized Gains: ${summary.unrealizedGains} (expected: ${expected.unrealizedGains})`);
+			console.log(`Summary - Realized Gains: ${summary.realizedGains} (expected: ${expected.realizedGains})`);
+			console.log(`Summary - Total Profit: ${summary.totalProfit} (expected: ${expected.totalProfit})`);
+			console.log(`Summary - Profit %: ${summary.profitPercent}% (expected: ${expected.profitPercent}%)`);
+
+			// Verify user coins
+			expect(userStats?.coinsCount).toBe(expected.coins);
+
+			// Verify portfolio (if exists)
+			if (expected.quantity > 0) {
+				expect(portfolio).toBeDefined();
+				expect(portfolio!.quantity).toBe(expected.quantity);
+				expect(portfolio!.totalInvested).toBe(expected.totalInvested);
+				expect(portfolio!.averageBuyPrice).toBe(expected.averageBuyPrice);
+				expect(portfolio!.realizedGains).toBe(expected.realizedGains);
+			}
+
+			// Verify summary
+			expect(summary.currentValue).toBe(expected.currentValue);
+			expect(summary.unrealizedGains).toBe(expected.unrealizedGains);
+			expect(summary.realizedGains).toBe(expected.realizedGains);
+			expect(summary.totalProfit).toBe(expected.totalProfit);
+			expect(summary.profitPercent).toBeCloseTo(expected.profitPercent, 1);
+		}
+
+		it("should verify exact calculations at each step of multi-transaction scenario", async () => {
+			const testDb = await createTestDatabase();
+			const ctx = createTestContext(testDb);
+
+			// Create user with 100,000 coins
+			const user = await call(createUser, { username: "preciseTrader" }, ctx);
+			await testDb
+				.update(userStatsTable)
+				.set({ coinsCount: 100000 })
+				.where(eq(userStatsTable.userId, user.id));
+
+			// Create asset
+			const [asset] = await testDb.insert(investmentAssetsTable).values({
+				symbol: "CALC",
+				name: "Calculation Test Stock",
+				assetType: "stock_us",
+				apiSource: "twelvedata",
+				apiSymbol: "CALC",
+				isActive: true,
+				minInvestment: 100,
+			}).returning();
+
+			if (!asset) throw new Error("Failed to create asset");
+
+			console.log("\n========================================");
+			console.log("DETAILED INVESTMENT CALCULATION TEST");
+			console.log("Starting coins: 100,000");
+			console.log("Fee rate: 1.5%");
+			console.log("========================================");
+
+			// ============================================================
+			// TRANSACTION 1: Buy 1000 coins worth @ $100 per share
+			// ============================================================
+			await updatePrice(testDb, asset.id, 10000); // $100.00
+
+			const buy1 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "CALC",
+				amountInCoins: 1000,
+			}, ctx);
+
+			// Manual calculation:
+			// amountInCoins = 1000
+			// fee = floor(1000 * 150 / 10000) = floor(15) = 15
+			// coinsAfterFee = 1000 - 15 = 985
+			// quantity = floor(985 * 1000 * 100 / 10000) = floor(9850000 / 10000) = 9850
+			// subtotal = floor(9850 * 10000 / 100000) = floor(985) = 985
+			// totalCost = 985 + 15 = 1000
+			// avgPrice = 10000 (first buy, equals current price)
+
+			expect(buy1.transaction.feeAmount).toBe(15);
+			expect(buy1.transaction.quantity).toBe(9850);
+			expect(buy1.transaction.subtotal).toBe(985);
+			expect(buy1.transaction.totalAmount).toBe(1000);
+
+			await verifyInvestmentState(testDb, user.id, 10000, {
+				coins: 100000 - 1000, // 99000
+				quantity: 9850,
+				totalInvested: 985,
+				averageBuyPrice: 10000,
+				realizedGains: 0,
+				currentValue: 985, // 9850 * 10000 / 100000 = 985
+				unrealizedGains: 0, // 985 - 985 = 0
+				totalProfit: 0,
+				profitPercent: 0,
+			}, "After BUY #1: 1000 coins @ $100");
+
+			// ============================================================
+			// TRANSACTION 2: Buy 2000 coins worth @ $80 per share
+			// ============================================================
+			await updatePrice(testDb, asset.id, 8000); // $80.00
+
+			const buy2 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "CALC",
+				amountInCoins: 2000,
+			}, ctx);
+
+			// Manual calculation:
+			// fee = floor(2000 * 150 / 10000) = 30
+			// coinsAfterFee = 2000 - 30 = 1970
+			// quantity = floor(1970 * 1000 * 100 / 8000) = floor(24625) = 24625
+			// subtotal = floor(24625 * 8000 / 100000) = floor(1970) = 1970
+			// totalCost = 1970 + 30 = 2000
+			// newQuantity = 9850 + 24625 = 34475
+			// newTotalInvested = 985 + 1970 = 2955
+			// newAvgPrice = floor(2955 * 100 / (34475 / 1000)) = floor(295500 / 34.475) = floor(8571.56) = 8571
+
+			expect(buy2.transaction.feeAmount).toBe(30);
+			expect(buy2.transaction.quantity).toBe(24625);
+			expect(buy2.transaction.subtotal).toBe(1970);
+			expect(buy2.transaction.totalAmount).toBe(2000);
+
+			// Current value at $80: 34475 * 8000 / 100000 = 2758
+			// Unrealized = 2758 - 2955 = -197 (underwater!)
+			await verifyInvestmentState(testDb, user.id, 8000, {
+				coins: 99000 - 2000, // 97000
+				quantity: 34475,
+				totalInvested: 2955,
+				averageBuyPrice: 8571,
+				realizedGains: 0,
+				currentValue: 2758,
+				unrealizedGains: -197,
+				totalProfit: -197,
+				profitPercent: -6.67, // -197 / 2955 * 100
+			}, "After BUY #2: 2000 coins @ $80");
+
+			// ============================================================
+			// TRANSACTION 3: SELL 50% @ $120 per share
+			// ============================================================
+			await updatePrice(testDb, asset.id, 12000); // $120.00
+
+			const sell1 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "CALC",
+				sellType: "percentage",
+				percentage: 50,
+			}, ctx);
+
+			// Manual calculation:
+			// quantityToSell = floor(34475 * 50 / 100) = 17237
+			// subtotal = floor(17237 * 12000 / 100000) = floor(2068.44) = 2068
+			// fee = floor(2068 * 150 / 10000) = floor(31.02) = 31
+			// netProceeds = 2068 - 31 = 2037
+			// costBasis = floor(17237 * 8571 / 100000) = floor(1477.06) = 1477
+			// realizedGain = 2037 - 1477 = 560
+			// remainingQuantity = 34475 - 17237 = 17238
+			// newTotalInvested = floor(17238 * 8571 / 100000) = floor(1477.14) = 1477
+
+			expect(sell1.transaction.quantity).toBe(17237);
+			expect(sell1.transaction.subtotal).toBe(2068);
+			expect(sell1.transaction.feeAmount).toBe(31);
+			expect(sell1.transaction.totalAmount).toBe(2037);
+			expect(sell1.profitLoss).toBe(560);
+
+			// Current value at $120: 17238 * 12000 / 100000 = 2068 (rounded down = 2068)
+			// Unrealized = 2068 - 1477 = 591
+			await verifyInvestmentState(testDb, user.id, 12000, {
+				coins: 97000 + 2037, // 99037
+				quantity: 17238,
+				totalInvested: 1477,
+				averageBuyPrice: 8571, // unchanged
+				realizedGains: 560,
+				currentValue: 2068,
+				unrealizedGains: 591,
+				totalProfit: 1151, // 560 + 591
+				profitPercent: 77.93, // 1151 / 1477 * 100
+			}, "After SELL #1: 50% @ $120");
+
+			// ============================================================
+			// TRANSACTION 4: Buy 3000 coins @ $60 per share
+			// ============================================================
+			await updatePrice(testDb, asset.id, 6000); // $60.00
+
+			const buy3 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "CALC",
+				amountInCoins: 3000,
+			}, ctx);
+
+			// Manual calculation:
+			// fee = floor(3000 * 150 / 10000) = 45
+			// coinsAfterFee = 3000 - 45 = 2955
+			// quantity = floor(2955 * 1000 * 100 / 6000) = floor(49250) = 49250
+			// subtotal = floor(49250 * 6000 / 100000) = floor(2955) = 2955
+			// totalCost = 2955 + 45 = 3000
+			// newQuantity = 17238 + 49250 = 66488
+			// newTotalInvested = 1477 + 2955 = 4432
+			// newAvgPrice = floor(4432 * 100 / (66488 / 1000)) = floor(443200 / 66.488) = floor(6665.86) = 6665
+
+			expect(buy3.transaction.feeAmount).toBe(45);
+			expect(buy3.transaction.quantity).toBe(49250);
+			expect(buy3.transaction.subtotal).toBe(2955);
+			expect(buy3.transaction.totalAmount).toBe(3000);
+
+			// Current value at $60: 66488 * 6000 / 100000 = 3989
+			// Unrealized = 3989 - 4432 = -443
+			await verifyInvestmentState(testDb, user.id, 6000, {
+				coins: 99037 - 3000, // 96037
+				quantity: 66488,
+				totalInvested: 4432,
+				averageBuyPrice: 6665,
+				realizedGains: 560,
+				currentValue: 3989,
+				unrealizedGains: -443,
+				totalProfit: 117, // 560 - 443
+				profitPercent: 2.64, // 117 / 4432 * 100
+			}, "After BUY #3: 3000 coins @ $60");
+
+			// ============================================================
+			// TRANSACTION 5: SELL ALL @ $100 per share
+			// ============================================================
+			await updatePrice(testDb, asset.id, 10000); // $100.00
+
+			const sellAll = await call(sellAsset, {
+				userId: user.id,
+				symbol: "CALC",
+				sellType: "all",
+			}, ctx);
+
+			// Manual calculation:
+			// quantityToSell = 66488 (all)
+			// subtotal = floor(66488 * 10000 / 100000) = floor(6648.8) = 6648
+			// fee = floor(6648 * 150 / 10000) = floor(99.72) = 99
+			// netProceeds = 6648 - 99 = 6549
+			// costBasis = floor(66488 * 6665 / 100000) = floor(4431.42) = 4431
+			// realizedGain = 6549 - 4431 = 2118
+			// totalRealizedGains = 560 + 2118 = 2678
+
+			expect(sellAll.transaction.quantity).toBe(66488);
+			expect(sellAll.transaction.subtotal).toBe(6648);
+			expect(sellAll.transaction.feeAmount).toBe(99);
+			expect(sellAll.transaction.totalAmount).toBe(6549);
+			expect(sellAll.profitLoss).toBe(2118);
+			expect(sellAll.portfolio).toBeUndefined(); // Portfolio deleted
+
+			// Final state - no holdings
+			const [finalStats] = await testDb
+				.select()
+				.from(userStatsTable)
+				.where(eq(userStatsTable.userId, user.id));
+
+			const finalSummary = await call(getInvestmentSummary, { userId: user.id }, ctx);
+
+			const expectedFinalCoins = 96037 + 6549; // 102586
+			const totalProfit = expectedFinalCoins - 100000; // 2586
+
+			console.log("\n=== FINAL STATE ===");
+			console.log(`Final Coins: ${finalStats?.coinsCount} (expected: ${expectedFinalCoins})`);
+			console.log(`Net Profit: ${totalProfit} coins`);
+			console.log(`Total Realized Gains: ${560 + 2118} = 2678`);
+			console.log(`Summary Holdings: ${finalSummary.holdingsCount}`);
+
+			expect(finalStats?.coinsCount).toBe(expectedFinalCoins);
+			expect(finalSummary.holdingsCount).toBe(0);
+			expect(finalSummary.currentValue).toBe(0);
+			expect(finalSummary.totalInvested).toBe(0);
+			expect(finalSummary.realizedGains).toBe(0); // No portfolio = no realized gains tracked
+			expect(finalSummary.totalProfit).toBe(0);
+
+			console.log("\n========================================");
+			console.log("TEST COMPLETED SUCCESSFULLY");
+			console.log(`Started: 100,000 coins`);
+			console.log(`Ended: ${expectedFinalCoins} coins`);
+			console.log(`Net Profit: ${totalProfit} coins (${(totalProfit / 1000).toFixed(2)}%)`);
+			console.log("========================================\n");
+		});
+
 		it("should correctly track profit/loss through 10 buy/sell transactions with price changes", async () => {
 			// Create fresh database for isolated test
 			const testDb = await createTestDatabase();
