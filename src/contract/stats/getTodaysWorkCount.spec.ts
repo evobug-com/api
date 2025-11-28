@@ -76,10 +76,12 @@ describe("getTodaysWorkCount functionality", () => {
 		});
 
 		it("should count only today's work activities", async () => {
-			const now = new Date();
-			const yesterday = new Date(now);
+			// Use todayStart-based times to avoid midnight race conditions
+			const todayStart = new Date();
+			todayStart.setHours(0, 0, 0, 0);
+			const yesterday = new Date(todayStart);
 			yesterday.setDate(yesterday.getDate() - 1);
-			const tomorrow = new Date(now);
+			const tomorrow = new Date(todayStart);
 			tomorrow.setDate(tomorrow.getDate() + 1);
 
 			// Create activities for different days
@@ -93,13 +95,13 @@ describe("getTodaysWorkCount functionality", () => {
 					createdAt: yesterday,
 					notes: "Yesterday work",
 				},
-				// Today's works (3)
+				// Today's works (3) - use todayStart plus offset to guarantee they're today
 				{
 					userId: testUserId,
 					activityType: "work",
 					xpEarned: 10,
 					coinsEarned: 100,
-					createdAt: now,
+					createdAt: new Date(todayStart.getTime() + 1000 * 60 * 60 * 12), // noon today
 					notes: "Today work 1",
 				},
 				{
@@ -107,7 +109,7 @@ describe("getTodaysWorkCount functionality", () => {
 					activityType: "work",
 					xpEarned: 10,
 					coinsEarned: 100,
-					createdAt: new Date(now.getTime() - 1000 * 60 * 60), // 1 hour ago
+					createdAt: new Date(todayStart.getTime() + 1000 * 60 * 60 * 10), // 10 AM today
 					notes: "Today work 2",
 				},
 				{
@@ -115,7 +117,7 @@ describe("getTodaysWorkCount functionality", () => {
 					activityType: "work",
 					xpEarned: 10,
 					coinsEarned: 100,
-					createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 2), // 2 hours ago
+					createdAt: new Date(todayStart.getTime() + 1000 * 60 * 60 * 8), // 8 AM today
 					notes: "Today work 3",
 				},
 				// Tomorrow's work (shouldn't be counted even if exists in DB)
@@ -276,16 +278,18 @@ describe("getTodaysWorkCount functionality", () => {
 
 	describe("Achievement milestone scenarios", () => {
 		it("should correctly report when user has exactly 23 works today", async () => {
-			const now = new Date();
+			// Use todayStart-based times to avoid midnight race conditions
+			const todayStart = new Date();
+			todayStart.setHours(0, 0, 0, 0);
 
-			// Create exactly 23 work activities
+			// Create exactly 23 work activities spread throughout today
 			await db.insert(userStatsLogTable).values(
 				Array.from({ length: 23 }, (_, i) => ({
 					userId: testUserId,
 					activityType: "work" as const,
 					xpEarned: 10,
 					coinsEarned: 100,
-					createdAt: new Date(now.getTime() - i * 1000 * 60 * 30), // Spread over last 11.5 hours
+					createdAt: new Date(todayStart.getTime() + (i + 1) * 1000 * 60 * 30), // Every 30 min starting from 00:30
 					notes: `Work ${i + 1}`,
 				})),
 			);
@@ -435,16 +439,18 @@ describe("getTodaysWorkCount functionality", () => {
 		});
 
 		it("should handle large number of work activities efficiently", async () => {
-			const now = new Date();
+			// Use todayStart-based times to avoid midnight race conditions
+			const todayStart = new Date();
+			todayStart.setHours(0, 0, 0, 0);
 
-			// Create 100 work activities today
+			// Create 100 work activities today - spread every 5 minutes starting from 00:05
 			await db.insert(userStatsLogTable).values(
 				Array.from({ length: 100 }, (_, i) => ({
 					userId: testUserId,
 					activityType: "work" as const,
 					xpEarned: 10,
 					coinsEarned: 100,
-					createdAt: new Date(now.getTime() - i * 1000 * 60 * 5), // Every 5 minutes
+					createdAt: new Date(todayStart.getTime() + (i + 1) * 1000 * 60 * 5), // Every 5 minutes starting from 00:05
 					notes: `Work ${i + 1}`,
 				})),
 			);

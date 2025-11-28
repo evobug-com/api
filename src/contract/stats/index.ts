@@ -21,6 +21,7 @@ import {
 	processLevelUp,
 } from "../../utils/stats-utils.ts";
 import { base } from "../shared/os.ts";
+import { calculateUserInvestmentMetrics } from "../investments/index.ts";
 
 export const levelProgressSchema = z.object({
 	xpProgress: z.number(),
@@ -99,14 +100,112 @@ export const userStats = base
 	});
 
 /**
+ * Investment summary schema for stats endpoint
+ */
+const investmentSummarySchema = z.object({
+	totalInvested: z.number(),
+	currentValue: z.number(),
+	totalProfit: z.number(),
+	profitPercent: z.number(),
+	holdingsCount: z.number(),
+});
+
+/**
+ * User stats with investments retrieval contract
+ * Returns user stats combined with their investment portfolio summary
+ * Useful for /points command to show total wealth
+ */
+export const userStatsWithInvestments = base
+	.input(
+		userSchema
+			.pick({
+				id: true,
+				discordId: true,
+				guildedId: true,
+				username: true,
+				email: true,
+			})
+			.partial(),
+	)
+	.output(
+		z.object({
+			stats: userStatsSchema,
+			levelProgress: levelProgressSchema,
+			investments: investmentSummarySchema,
+			totalWealth: z.number(), // coins + currentValue of investments
+		}),
+	)
+	.handler(async ({ input, context, errors }) => {
+		// Find user with any of the provided identifiers
+		let user: { id: number; stats: typeof userStatsTable.$inferSelect | null } | null | undefined = null;
+		if (input.id !== undefined) {
+			user = await context.db.query.usersTable.findFirst({
+				where: { id: input.id },
+				with: { stats: true },
+				columns: { id: true },
+			});
+		} else if (input.discordId !== undefined && input.discordId !== null) {
+			user = await context.db.query.usersTable.findFirst({
+				where: { discordId: input.discordId as string },
+				with: { stats: true },
+				columns: { id: true },
+			});
+		} else if (input.guildedId !== undefined && input.guildedId !== null) {
+			user = await context.db.query.usersTable.findFirst({
+				where: { guildedId: input.guildedId as string },
+				with: { stats: true },
+				columns: { id: true },
+			});
+		}
+
+		if (!user)
+			throw errors.NOT_FOUND({
+				message: "User not found for the given identifiers / userStatsWithInvestments",
+			});
+		const stats = user?.stats;
+
+		if (!stats) {
+			throw errors.NOT_FOUND({
+				message: "User stats not found for the given user / userStatsWithInvestments",
+			});
+		}
+
+		const levelProgress = getLevelProgress(stats.xpCount);
+
+		// Get investment summary using shared helper
+		const investmentMetrics = await calculateUserInvestmentMetrics(context, user.id);
+
+		const investments = {
+			totalInvested: investmentMetrics.totalInvested,
+			currentValue: investmentMetrics.currentValue,
+			totalProfit: investmentMetrics.totalProfit,
+			profitPercent: investmentMetrics.profitPercent,
+			holdingsCount: investmentMetrics.holdingsCount,
+		};
+
+		return {
+			stats,
+			levelProgress,
+			investments,
+			totalWealth: stats.coinsCount + investmentMetrics.currentValue,
+		};
+	});
+
+/**
+ * Standard metrics that can be queried from user_stats table
+ * Investment metrics are available via the dedicated /investments/leaderboard endpoint
+ */
+const standardMetrics = ["coins", "xp", "level", "dailystreak", "maxdailystreak", "workcount"] as const;
+
+/**
  * Top users leaderboard contract
  * GET /users/leaderboard - Retrieves top users by specified metric
- * Supports various metrics and configurable limit
+ * For investment leaderboards, use /investments/leaderboard endpoint
  */
 export const leaderboard = base
 	.input(
 		z.object({
-			metric: z.enum(["coins", "xp", "level", "dailystreak", "maxdailystreak", "workcount"]).default("coins"),
+			metric: z.enum(standardMetrics).default("coins"),
 			limit: z.number().int().min(1).max(100).default(10),
 		}),
 	)
@@ -122,7 +221,7 @@ export const leaderboard = base
 	.handler(async ({ input, context }) => {
 		const { metric, limit } = input;
 
-		// Map metric to the actual column name
+		// Standard metrics from user_stats table
 		const metricColumn = {
 			coins: userStatsTable.coinsCount,
 			xp: userStatsTable.xpCount,
@@ -130,7 +229,7 @@ export const leaderboard = base
 			dailystreak: userStatsTable.dailyStreak,
 			maxdailystreak: userStatsTable.maxDailyStreak,
 			workcount: userStatsTable.workCount,
-		}[metric];
+		}[metric as typeof standardMetrics[number]];
 
 		// Query the top users with their stats
 		const topUsers = await context.db
