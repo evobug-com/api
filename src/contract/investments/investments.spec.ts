@@ -952,6 +952,593 @@ describe("Investments", async () => {
 			console.log("========================================\n");
 		});
 
+		it("should verify exact calculations through 20 volatile transactions", async () => {
+			const testDb = await createTestDatabase();
+			const ctx = createTestContext(testDb);
+
+			// Create user with 100,000 coins
+			const user = await call(createUser, { username: "volatileTrader" }, ctx);
+			await testDb
+				.update(userStatsTable)
+				.set({ coinsCount: 100000 })
+				.where(eq(userStatsTable.userId, user.id));
+
+			// Create asset
+			const [asset] = await testDb.insert(investmentAssetsTable).values({
+				symbol: "VOLATILE",
+				name: "Highly Volatile Stock",
+				assetType: "stock_us",
+				apiSource: "twelvedata",
+				apiSymbol: "VOLATILE",
+				minInvestment: 100,
+				isActive: true,
+			}).returning();
+
+			// Initial price $100
+			await updatePrice(testDb, asset.id, 10000);
+
+			console.log("\n========================================");
+			console.log("20-TRANSACTION VOLATILE TEST");
+			console.log("Starting coins: 100,000");
+			console.log("Fee rate: 1.5%");
+			console.log("Price swings: $100 → $75 → $50 → $40 → $60 → $120 → $95 → $150 → $110 → $80");
+			console.log("             → $65 → $55 → $70 → $45 → $90 → $85 → $140 → $125 → $180 → $160");
+			console.log("========================================\n");
+
+			// ============================================================
+			// TRANSACTION 1: BUY 5000 coins @ $100
+			// ============================================================
+			const buy1 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 5000,
+			}, ctx);
+
+			expect(buy1.transaction.feeAmount).toBe(75);
+			expect(buy1.transaction.quantity).toBe(49250);
+			expect(buy1.transaction.subtotal).toBe(4925);
+
+			await verifyInvestmentState(testDb, user.id, 10000, {
+				coins: 95000,
+				quantity: 49250,
+				totalInvested: 4925,
+				averageBuyPrice: 10000,
+				realizedGains: 0,
+				currentValue: 4925,
+				unrealizedGains: 0,
+				totalProfit: 0,
+				profitPercent: 0,
+			}, "TX 1: BUY 5000 @ $100");
+
+			// ============================================================
+			// TRANSACTION 2: BUY 3000 coins @ $75 (crash)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 7500);
+
+			const buy2 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 3000,
+			}, ctx);
+
+			expect(buy2.transaction.feeAmount).toBe(45);
+			expect(buy2.transaction.quantity).toBe(39400);
+
+			await verifyInvestmentState(testDb, user.id, 7500, {
+				coins: 92000,
+				quantity: 88650,
+				totalInvested: 7880,
+				averageBuyPrice: 8888,
+				realizedGains: 0,
+				currentValue: 6648,
+				unrealizedGains: -1232,
+				totalProfit: -1232,
+				profitPercent: -15.63,
+			}, "TX 2: BUY 3000 @ $75 (crash)");
+
+			// ============================================================
+			// TRANSACTION 3: SELL 25% @ $50 (flash crash, panic sell)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 5000);
+
+			const sell3 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				sellType: "percentage",
+				percentage: 25,
+			}, ctx);
+
+			expect(sell3.transaction.quantity).toBe(22162);
+			expect(sell3.transaction.feeAmount).toBe(16);
+			expect(sell3.profitLoss).toBe(-877);
+
+			await verifyInvestmentState(testDb, user.id, 5000, {
+				coins: 93092,
+				quantity: 66488,
+				totalInvested: 5909,
+				averageBuyPrice: 8888,
+				realizedGains: -877,
+				currentValue: 3324,
+				unrealizedGains: -2585,
+				totalProfit: -3462,
+				profitPercent: -58.59,
+			}, "TX 3: SELL 25% @ $50 (flash crash)");
+
+			// ============================================================
+			// TRANSACTION 4: BUY 8000 coins @ $40 (bottom, buy heavily)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 4000);
+
+			const buy4 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 8000,
+			}, ctx);
+
+			expect(buy4.transaction.feeAmount).toBe(120);
+			expect(buy4.transaction.quantity).toBe(197000);
+
+			await verifyInvestmentState(testDb, user.id, 4000, {
+				coins: 85092,
+				quantity: 263488,
+				totalInvested: 13789,
+				averageBuyPrice: 5233,
+				realizedGains: -877,
+				currentValue: 10539,
+				unrealizedGains: -3250,
+				totalProfit: -4127,
+				profitPercent: -29.93,
+			}, "TX 4: BUY 8000 @ $40 (bottom)");
+
+			// ============================================================
+			// TRANSACTION 5: BUY 2000 coins @ $60 (recovery)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 6000);
+
+			const buy5 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 2000,
+			}, ctx);
+
+			expect(buy5.transaction.feeAmount).toBe(30);
+			expect(buy5.transaction.quantity).toBe(32833);
+
+			await verifyInvestmentState(testDb, user.id, 6000, {
+				coins: 83093,
+				quantity: 296321,
+				totalInvested: 15758,
+				averageBuyPrice: 5317,
+				realizedGains: -877,
+				currentValue: 17779,
+				unrealizedGains: 2021,
+				totalProfit: 1144,
+				profitPercent: 7.26,
+			}, "TX 5: BUY 2000 @ $60 (recovery)");
+
+			// ============================================================
+			// TRANSACTION 6: SELL 30% @ $120 (spike, take profits)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 12000);
+
+			const sell6 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				sellType: "percentage",
+				percentage: 30,
+			}, ctx);
+
+			expect(sell6.transaction.quantity).toBe(88896);
+			expect(sell6.transaction.feeAmount).toBe(160);
+			expect(sell6.profitLoss).toBe(5781);
+
+			await verifyInvestmentState(testDb, user.id, 12000, {
+				coins: 93600,
+				quantity: 207425,
+				totalInvested: 11028,
+				averageBuyPrice: 5317,
+				realizedGains: 4904,
+				currentValue: 24891,
+				unrealizedGains: 13863,
+				totalProfit: 18767,
+				profitPercent: 170.18,
+			}, "TX 6: SELL 30% @ $120 (spike)");
+
+			// ============================================================
+			// TRANSACTION 7: BUY 4000 coins @ $95 (pullback)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 9500);
+
+			const buy7 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 4000,
+			}, ctx);
+
+			expect(buy7.transaction.feeAmount).toBe(60);
+			expect(buy7.transaction.quantity).toBe(41473);
+
+			await verifyInvestmentState(testDb, user.id, 9500, {
+				coins: 89601,
+				quantity: 248898,
+				totalInvested: 14967,
+				averageBuyPrice: 6013,
+				realizedGains: 4904,
+				currentValue: 23645,
+				unrealizedGains: 8678,
+				totalProfit: 13582,
+				profitPercent: 90.75,
+			}, "TX 7: BUY 4000 @ $95 (pullback)");
+
+			// ============================================================
+			// TRANSACTION 8: SELL 10% @ $150 (moon, trim position)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 15000);
+
+			const sell8 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				sellType: "percentage",
+				percentage: 10,
+			}, ctx);
+
+			expect(sell8.transaction.quantity).toBe(24889);
+			expect(sell8.transaction.feeAmount).toBe(55);
+			expect(sell8.profitLoss).toBe(2182);
+
+			await verifyInvestmentState(testDb, user.id, 15000, {
+				coins: 93279,
+				quantity: 224009,
+				totalInvested: 13469,
+				averageBuyPrice: 6013,
+				realizedGains: 7086,
+				currentValue: 33601,
+				unrealizedGains: 20132,
+				totalProfit: 27218,
+				profitPercent: 202.08,
+			}, "TX 8: SELL 10% @ $150 (moon)");
+
+			// ============================================================
+			// TRANSACTION 9: BUY 6000 coins @ $110 (drop, accumulate)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 11000);
+
+			const buy9 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 6000,
+			}, ctx);
+
+			expect(buy9.transaction.feeAmount).toBe(90);
+			expect(buy9.transaction.quantity).toBe(53727);
+
+			await verifyInvestmentState(testDb, user.id, 11000, {
+				coins: 87280,
+				quantity: 277736,
+				totalInvested: 19378,
+				averageBuyPrice: 6977,
+				realizedGains: 7086,
+				currentValue: 30550,
+				unrealizedGains: 11172,
+				totalProfit: 18258,
+				profitPercent: 94.22,
+			}, "TX 9: BUY 6000 @ $110 (accumulate)");
+
+			// ============================================================
+			// TRANSACTION 10: SELL 50% @ $80 (crash, sell half)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 8000);
+
+			const sell10 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				sellType: "percentage",
+				percentage: 50,
+			}, ctx);
+
+			expect(sell10.transaction.quantity).toBe(138868);
+			expect(sell10.transaction.feeAmount).toBe(166);
+			expect(sell10.profitLoss).toBe(1255);
+
+			await verifyInvestmentState(testDb, user.id, 8000, {
+				coins: 98223,
+				quantity: 138868,
+				totalInvested: 9688,
+				averageBuyPrice: 6977,
+				realizedGains: 8341,
+				currentValue: 11109,
+				unrealizedGains: 1421,
+				totalProfit: 9762,
+				profitPercent: 100.76,
+			}, "TX 10: SELL 50% @ $80 (crash)");
+
+			// ============================================================
+			// TRANSACTION 11: BUY 10000 coins @ $65 (continue down, DCA)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 6500);
+
+			const buy11 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 10000,
+			}, ctx);
+
+			expect(buy11.transaction.feeAmount).toBe(150);
+			expect(buy11.transaction.quantity).toBe(151538);
+
+			await verifyInvestmentState(testDb, user.id, 6500, {
+				coins: 88224,
+				quantity: 290406,
+				totalInvested: 19537,
+				averageBuyPrice: 6727,
+				realizedGains: 8341,
+				currentValue: 18876,
+				unrealizedGains: -661,
+				totalProfit: 7680,
+				profitPercent: 39.31,
+			}, "TX 11: BUY 10000 @ $65 (DCA)");
+
+			// ============================================================
+			// TRANSACTION 12: BUY 5000 coins @ $55 (further down, DCA)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 5500);
+
+			const buy12 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 5000,
+			}, ctx);
+
+			expect(buy12.transaction.feeAmount).toBe(75);
+			expect(buy12.transaction.quantity).toBe(89545);
+
+			await verifyInvestmentState(testDb, user.id, 5500, {
+				coins: 83225,
+				quantity: 379951,
+				totalInvested: 24461,
+				averageBuyPrice: 6437,
+				realizedGains: 8341,
+				currentValue: 20897,
+				unrealizedGains: -3564,
+				totalProfit: 4777,
+				profitPercent: 19.53,
+			}, "TX 12: BUY 5000 @ $55 (DCA)");
+
+			// ============================================================
+			// TRANSACTION 13: SELL 20% @ $70 (small bounce, trim)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 7000);
+
+			const sell13 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				sellType: "percentage",
+				percentage: 20,
+			}, ctx);
+
+			expect(sell13.transaction.quantity).toBe(75990);
+			expect(sell13.transaction.feeAmount).toBe(79);
+			expect(sell13.profitLoss).toBe(349);
+
+			await verifyInvestmentState(testDb, user.id, 7000, {
+				coins: 88465,
+				quantity: 303961,
+				totalInvested: 19565,
+				averageBuyPrice: 6437,
+				realizedGains: 8690,
+				currentValue: 21277,
+				unrealizedGains: 1712,
+				totalProfit: 10402,
+				profitPercent: 53.17,
+			}, "TX 13: SELL 20% @ $70 (bounce)");
+
+			// ============================================================
+			// TRANSACTION 14: BUY 3000 coins @ $45 (new low)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 4500);
+
+			const buy14 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 3000,
+			}, ctx);
+
+			expect(buy14.transaction.feeAmount).toBe(45);
+			expect(buy14.transaction.quantity).toBe(65666);
+
+			await verifyInvestmentState(testDb, user.id, 4500, {
+				coins: 85466,
+				quantity: 369627,
+				totalInvested: 22519,
+				averageBuyPrice: 6092,
+				realizedGains: 8690,
+				currentValue: 16633,
+				unrealizedGains: -5886,
+				totalProfit: 2804,
+				profitPercent: 12.45,
+			}, "TX 14: BUY 3000 @ $45 (new low)");
+
+			// ============================================================
+			// TRANSACTION 15: SELL 15% @ $90 (recovery, take some)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 9000);
+
+			const sell15 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				sellType: "percentage",
+				percentage: 15,
+			}, ctx);
+
+			expect(sell15.transaction.quantity).toBe(55444);
+			expect(sell15.transaction.feeAmount).toBe(74);
+			expect(sell15.profitLoss).toBe(1538);
+
+			await verifyInvestmentState(testDb, user.id, 9000, {
+				coins: 90381,
+				quantity: 314183,
+				totalInvested: 19140,
+				averageBuyPrice: 6092,
+				realizedGains: 10228,
+				currentValue: 28276,
+				unrealizedGains: 9136,
+				totalProfit: 19364,
+				profitPercent: 101.17,
+			}, "TX 15: SELL 15% @ $90 (recovery)");
+
+			// ============================================================
+			// TRANSACTION 16: BUY 7000 coins @ $85 (dip, add)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 8500);
+
+			const buy16 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 7000,
+			}, ctx);
+
+			expect(buy16.transaction.feeAmount).toBe(105);
+			expect(buy16.transaction.quantity).toBe(81117);
+
+			await verifyInvestmentState(testDb, user.id, 8500, {
+				coins: 83382,
+				quantity: 395300,
+				totalInvested: 26034,
+				averageBuyPrice: 6585,
+				realizedGains: 10228,
+				currentValue: 33600,
+				unrealizedGains: 7566,
+				totalProfit: 17794,
+				profitPercent: 68.35,
+			}, "TX 16: BUY 7000 @ $85 (dip)");
+
+			// ============================================================
+			// TRANSACTION 17: SELL 40% @ $140 (rally, big trim)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 14000);
+
+			const sell17 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				sellType: "percentage",
+				percentage: 40,
+			}, ctx);
+
+			expect(sell17.transaction.quantity).toBe(158120);
+			expect(sell17.transaction.feeAmount).toBe(332);
+			expect(sell17.profitLoss).toBe(11392);
+
+			await verifyInvestmentState(testDb, user.id, 14000, {
+				coins: 105186,
+				quantity: 237180,
+				totalInvested: 15618,
+				averageBuyPrice: 6585,
+				realizedGains: 21620,
+				currentValue: 33205,
+				unrealizedGains: 17587,
+				totalProfit: 39207,
+				profitPercent: 251.04,
+			}, "TX 17: SELL 40% @ $140 (rally)");
+
+			// ============================================================
+			// TRANSACTION 18: BUY 2000 coins @ $125 (pullback, small add)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 12500);
+
+			const buy18 = await call(buyAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				amountInCoins: 2000,
+			}, ctx);
+
+			expect(buy18.transaction.feeAmount).toBe(30);
+			expect(buy18.transaction.quantity).toBe(15760);
+
+			await verifyInvestmentState(testDb, user.id, 12500, {
+				coins: 103186,
+				quantity: 252940,
+				totalInvested: 17588,
+				averageBuyPrice: 6953,
+				realizedGains: 21620,
+				currentValue: 31617,
+				unrealizedGains: 14029,
+				totalProfit: 35649,
+				profitPercent: 202.69,
+			}, "TX 18: BUY 2000 @ $125 (pullback)");
+
+			// ============================================================
+			// TRANSACTION 19: SELL 25% @ $180 (ATH, take profits)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 18000);
+
+			const sell19 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				sellType: "percentage",
+				percentage: 25,
+			}, ctx);
+
+			expect(sell19.transaction.quantity).toBe(63235);
+			expect(sell19.transaction.feeAmount).toBe(170);
+			expect(sell19.profitLoss).toBe(6816);
+
+			await verifyInvestmentState(testDb, user.id, 18000, {
+				coins: 114398,
+				quantity: 189705,
+				totalInvested: 13190,
+				averageBuyPrice: 6953,
+				realizedGains: 28436,
+				currentValue: 34146,
+				unrealizedGains: 20956,
+				totalProfit: 49392,
+				profitPercent: 374.47,
+			}, "TX 19: SELL 25% @ $180 (ATH)");
+
+			// ============================================================
+			// TRANSACTION 20: SELL 100% @ $160 (exit all)
+			// ============================================================
+			await updatePrice(testDb, asset.id, 16000);
+
+			const sell20 = await call(sellAsset, {
+				userId: user.id,
+				symbol: "VOLATILE",
+				sellType: "all",
+			}, ctx);
+
+			expect(sell20.transaction.quantity).toBe(189705);
+			expect(sell20.transaction.feeAmount).toBe(455);
+			expect(sell20.profitLoss).toBe(16707);
+			expect(sell20.portfolio).toBeUndefined();
+
+			// Final verification
+			const [finalStats] = await testDb
+				.select()
+				.from(userStatsTable)
+				.where(eq(userStatsTable.userId, user.id));
+
+			const finalSummary = await call(getInvestmentSummary, { userId: user.id }, ctx);
+
+			console.log("\n=== TX 20: SELL 100% @ $160 (exit all) ===");
+			console.log(`Final Coins: ${finalStats?.coinsCount} (expected: 144295)`);
+			console.log(`Net Profit: ${(finalStats?.coinsCount ?? 0) - 100000} coins`);
+			console.log(`Total Realized Gains: 45143`);
+			console.log(`Holdings: ${finalSummary.holdingsCount}`);
+
+			expect(finalStats?.coinsCount).toBe(144295);
+			expect(finalSummary.holdingsCount).toBe(0);
+			expect(finalSummary.currentValue).toBe(0);
+			expect(finalSummary.totalInvested).toBe(0);
+
+			console.log("\n========================================");
+			console.log("20-TRANSACTION TEST COMPLETED SUCCESSFULLY");
+			console.log("Started: 100,000 coins");
+			console.log("Ended: 144,295 coins");
+			console.log("Net Profit: 44,295 coins (+44.3%)");
+			console.log("Total Realized Gains: 45,143 coins");
+			console.log("Fees Paid: ~848 coins");
+			console.log("========================================\n");
+		});
+
 		it("should correctly track profit/loss through 10 buy/sell transactions with price changes", async () => {
 			// Create fresh database for isolated test
 			const testDb = await createTestDatabase();
