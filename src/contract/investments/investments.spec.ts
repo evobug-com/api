@@ -974,8 +974,11 @@ describe("Investments", async () => {
 				isActive: true,
 			}).returning();
 
+			if (!asset) throw new Error("Failed to create asset");
+			const assetId = asset.id;
+
 			// Initial price $100
-			await updatePrice(testDb, asset.id, 10000);
+			await updatePrice(testDb, assetId, 10000);
 
 			console.log("\n========================================");
 			console.log("20-TRANSACTION VOLATILE TEST");
@@ -1013,7 +1016,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 2: BUY 3000 coins @ $75 (crash)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 7500);
+			await updatePrice(testDb, assetId, 7500);
 
 			const buy2 = await call(buyAsset, {
 				userId: user.id,
@@ -1039,7 +1042,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 3: SELL 25% @ $50 (flash crash, panic sell)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 5000);
+			await updatePrice(testDb, assetId, 5000);
 
 			const sell3 = await call(sellAsset, {
 				userId: user.id,
@@ -1067,7 +1070,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 4: BUY 8000 coins @ $40 (bottom, buy heavily)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 4000);
+			await updatePrice(testDb, assetId, 4000);
 
 			const buy4 = await call(buyAsset, {
 				userId: user.id,
@@ -1093,7 +1096,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 5: BUY 2000 coins @ $60 (recovery)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 6000);
+			await updatePrice(testDb, assetId, 6000);
 
 			const buy5 = await call(buyAsset, {
 				userId: user.id,
@@ -1119,7 +1122,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 6: SELL 30% @ $120 (spike, take profits)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 12000);
+			await updatePrice(testDb, assetId, 12000);
 
 			const sell6 = await call(sellAsset, {
 				userId: user.id,
@@ -1147,7 +1150,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 7: BUY 4000 coins @ $95 (pullback)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 9500);
+			await updatePrice(testDb, assetId, 9500);
 
 			const buy7 = await call(buyAsset, {
 				userId: user.id,
@@ -1173,7 +1176,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 8: SELL 10% @ $150 (moon, trim position)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 15000);
+			await updatePrice(testDb, assetId, 15000);
 
 			const sell8 = await call(sellAsset, {
 				userId: user.id,
@@ -1201,7 +1204,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 9: BUY 6000 coins @ $110 (drop, accumulate)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 11000);
+			await updatePrice(testDb, assetId, 11000);
 
 			const buy9 = await call(buyAsset, {
 				userId: user.id,
@@ -1227,7 +1230,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 10: SELL 50% @ $80 (crash, sell half)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 8000);
+			await updatePrice(testDb, assetId, 8000);
 
 			const sell10 = await call(sellAsset, {
 				userId: user.id,
@@ -1255,7 +1258,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 11: BUY 10000 coins @ $65 (continue down, DCA)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 6500);
+			await updatePrice(testDb, assetId, 6500);
 
 			const buy11 = await call(buyAsset, {
 				userId: user.id,
@@ -1281,7 +1284,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 12: BUY 5000 coins @ $55 (further down, DCA)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 5500);
+			await updatePrice(testDb, assetId, 5500);
 
 			const buy12 = await call(buyAsset, {
 				userId: user.id,
@@ -1307,7 +1310,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 13: SELL 20% @ $70 (small bounce, trim)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 7000);
+			await updatePrice(testDb, assetId, 7000);
 
 			const sell13 = await call(sellAsset, {
 				userId: user.id,
@@ -1335,7 +1338,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 14: BUY 3000 coins @ $45 (new low)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 4500);
+			await updatePrice(testDb, assetId, 4500);
 
 			const buy14 = await call(buyAsset, {
 				userId: user.id,
@@ -1361,7 +1364,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 15: SELL 15% @ $90 (recovery, take some)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 9000);
+			await updatePrice(testDb, assetId, 9000);
 
 			const sell15 = await call(sellAsset, {
 				userId: user.id,
@@ -1389,7 +1392,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 16: BUY 7000 coins @ $85 (dip, add)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 8500);
+			await updatePrice(testDb, assetId, 8500);
 
 			const buy16 = await call(buyAsset, {
 				userId: user.id,
@@ -1415,7 +1418,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 17: SELL 40% @ $140 (rally, big trim)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 14000);
+			await updatePrice(testDb, assetId, 14000);
 
 			const sell17 = await call(sellAsset, {
 				userId: user.id,
@@ -1443,7 +1446,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 18: BUY 2000 coins @ $125 (pullback, small add)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 12500);
+			await updatePrice(testDb, assetId, 12500);
 
 			const buy18 = await call(buyAsset, {
 				userId: user.id,
@@ -1469,7 +1472,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 19: SELL 25% @ $180 (ATH, take profits)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 18000);
+			await updatePrice(testDb, assetId, 18000);
 
 			const sell19 = await call(sellAsset, {
 				userId: user.id,
@@ -1497,7 +1500,7 @@ describe("Investments", async () => {
 			// ============================================================
 			// TRANSACTION 20: SELL 100% @ $160 (exit all)
 			// ============================================================
-			await updatePrice(testDb, asset.id, 16000);
+			await updatePrice(testDb, assetId, 16000);
 
 			const sell20 = await call(sellAsset, {
 				userId: user.id,
