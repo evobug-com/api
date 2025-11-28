@@ -46,6 +46,112 @@ async function getLatestPrice(context: { db: BunSQLDatabase<typeof schema, typeo
 }
 
 /**
+ * Batch fetch latest prices for multiple assets
+ * Returns a Map of assetId -> price
+ */
+export async function batchGetLatestPrices(
+	context: { db: BunSQLDatabase<typeof schema, typeof relations> },
+	assetIds: number[]
+): Promise<Map<number, number>> {
+	const priceMap = new Map<number, number>();
+	if (assetIds.length === 0) return priceMap;
+
+	// Fetch prices in parallel
+	const prices = await Promise.all(
+		assetIds.map(async (assetId) => {
+			const priceData = await getLatestPrice(context, assetId);
+			return { assetId, price: priceData?.price };
+		})
+	);
+
+	for (const { assetId, price } of prices) {
+		if (price !== undefined) {
+			priceMap.set(assetId, price);
+		}
+	}
+
+	return priceMap;
+}
+
+/**
+ * Investment metrics result type
+ */
+export type InvestmentMetrics = {
+	totalInvested: number;
+	currentValue: number;
+	totalProfit: number;
+	profitPercent: number;
+	realizedGains: number;
+	unrealizedGains: number;
+	holdingsCount: number;
+};
+
+/**
+ * Calculate investment metrics for a single user
+ * Shared helper to avoid code duplication
+ */
+export async function calculateUserInvestmentMetrics(
+	context: { db: BunSQLDatabase<typeof schema, typeof relations> },
+	userId: number
+): Promise<InvestmentMetrics> {
+	// Get user's portfolios
+	const portfolios = await context.db
+		.select()
+		.from(investmentPortfoliosTable)
+		.where(eq(investmentPortfoliosTable.userId, userId));
+
+	if (portfolios.length === 0) {
+		return {
+			totalInvested: 0,
+			currentValue: 0,
+			totalProfit: 0,
+			profitPercent: 0,
+			realizedGains: 0,
+			unrealizedGains: 0,
+			holdingsCount: 0,
+		};
+	}
+
+	// Batch fetch prices
+	const assetIds = [...new Set(portfolios.map(p => p.assetId))];
+	const priceMap = await batchGetLatestPrices(context, assetIds);
+
+	let totalInvested = 0;
+	let currentValue = 0;
+	let realizedGains = 0;
+	let holdingsCount = 0;
+
+	for (const portfolio of portfolios) {
+		if (portfolio.quantity > 0) {
+			holdingsCount++;
+		}
+
+		const currentPrice = priceMap.get(portfolio.assetId) || portfolio.averageBuyPrice;
+		const portfolioValue = Math.floor((portfolio.quantity * currentPrice) / 100000);
+
+		totalInvested += portfolio.totalInvested;
+		currentValue += portfolioValue;
+		realizedGains += portfolio.realizedGains;
+	}
+
+	const unrealizedGains = currentValue - totalInvested;
+	const totalProfit = realizedGains + unrealizedGains;
+	const profitPercent = totalInvested > 0
+		? Math.round((totalProfit / totalInvested) * 10000) / 100
+		: 0;
+
+	return {
+		totalInvested,
+		currentValue,
+		totalProfit,
+		profitPercent,
+		realizedGains,
+		unrealizedGains,
+		holdingsCount,
+	};
+}
+
+/**
  * Buy asset endpoint
  * POST /users/{userId}/investments/buy
  */
@@ -920,58 +1026,5 @@ export const getInvestmentSummary = base
 		}),
 	)
 	.handler(async ({ input, context }) => {
-		// Get user's portfolios
-		const portfolios = await context.db
-			.select()
-			.from(investmentPortfoliosTable)
-			.where(eq(investmentPortfoliosTable.userId, input.userId));
-
-		if (portfolios.length === 0) {
-			return {
-				totalInvested: 0,
-				currentValue: 0,
-				totalProfit: 0,
-				profitPercent: 0,
-				realizedGains: 0,
-				unrealizedGains: 0,
-				holdingsCount: 0,
-			};
-		}
-
-		let totalInvested = 0;
-		let currentValue = 0;
-		let realizedGains = 0;
-		let unrealizedGains = 0;
-		let holdingsCount = 0;
-
-		for (const portfolio of portfolios) {
-			if (portfolio.quantity > 0) {
-				holdingsCount++;
-			}
-
-			const priceData = await getLatestPrice(context, portfolio.assetId);
-			const currentPrice = priceData?.price || portfolio.averageBuyPrice;
-			const portfolioValue = Math.floor((portfolio.quantity * currentPrice) / 100000);
-			const unrealizedGain = portfolioValue - portfolio.totalInvested;
-
-			totalInvested += portfolio.totalInvested;
-			currentValue += portfolioValue;
-			realizedGains += portfolio.realizedGains;
-			unrealizedGains += unrealizedGain;
-		}
-
-		const totalProfit = realizedGains + unrealizedGains;
-		const profitPercent = totalInvested > 0
-			? Math.round((totalProfit / totalInvested) * 10000) / 100
-			: 0;
-
-		return {
-			totalInvested,
-			currentValue,
-			totalProfit,
-			profitPercent,
-			realizedGains,
-			unrealizedGains,
-			holdingsCount,
-		};
+		return calculateUserInvestmentMetrics(context, input.userId);
 	});

@@ -1,11 +1,9 @@
-import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
-import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
+import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { z } from "zod";
 import {
 	captchaLogsTable,
 	type InsertDbCaptchaLog,
 	type InsertDbUserStatsLog,
-	investmentPortfoliosTable,
 	userSchema,
 	userStatsLogSchema,
 	userStatsLogTable,
@@ -13,8 +11,6 @@ import {
 	userStatsTable,
 	usersTable,
 } from "../../db/schema.ts";
-import type * as schema from "../../db/schema.ts";
-import type { relations } from "../../db/relations.ts";
 import {
 	calculateLevel,
 	calculateRewards,
@@ -25,6 +21,7 @@ import {
 	processLevelUp,
 } from "../../utils/stats-utils.ts";
 import { base } from "../shared/os.ts";
+import { calculateUserInvestmentMetrics } from "../investments/index.ts";
 
 export const levelProgressSchema = z.object({
 	xpProgress: z.number(),
@@ -175,82 +172,40 @@ export const userStatsWithInvestments = base
 
 		const levelProgress = getLevelProgress(stats.xpCount);
 
-		// Get investment summary
-		const portfolios = await context.db
-			.select()
-			.from(investmentPortfoliosTable)
-			.where(eq(investmentPortfoliosTable.userId, user.id));
-
-		let totalInvested = 0;
-		let currentValue = 0;
-		let holdingsCount = 0;
-		let realizedGains = 0;
-
-		for (const portfolio of portfolios) {
-			if (portfolio.quantity > 0) {
-				holdingsCount++;
-			}
-
-			// Get latest price for this asset
-			const priceData = await context.db.query.investmentPriceCacheTable.findFirst({
-				where: { assetId: portfolio.assetId },
-				orderBy: { priceTimestamp: "desc" },
-			});
-
-			const currentPrice = priceData?.price || portfolio.averageBuyPrice;
-			const portfolioValue = Math.floor((portfolio.quantity * currentPrice) / 100000);
-
-			totalInvested += portfolio.totalInvested;
-			currentValue += portfolioValue;
-			realizedGains += portfolio.realizedGains;
-		}
-
-		const unrealizedGains = currentValue - totalInvested;
-		const totalProfit = realizedGains + unrealizedGains;
-		const profitPercent = totalInvested > 0
-			? Math.round((totalProfit / totalInvested) * 10000) / 100
-			: 0;
+		// Get investment summary using shared helper
+		const investmentMetrics = await calculateUserInvestmentMetrics(context, user.id);
 
 		const investments = {
-			totalInvested,
-			currentValue,
-			totalProfit,
-			profitPercent,
-			holdingsCount,
+			totalInvested: investmentMetrics.totalInvested,
+			currentValue: investmentMetrics.currentValue,
+			totalProfit: investmentMetrics.totalProfit,
+			profitPercent: investmentMetrics.profitPercent,
+			holdingsCount: investmentMetrics.holdingsCount,
 		};
 
 		return {
 			stats,
 			levelProgress,
 			investments,
-			totalWealth: stats.coinsCount + currentValue,
+			totalWealth: stats.coinsCount + investmentMetrics.currentValue,
 		};
 	});
 
 /**
  * Standard metrics that can be queried from user_stats table
+ * Investment metrics are available via the dedicated /investments/leaderboard endpoint
  */
 const standardMetrics = ["coins", "xp", "level", "dailystreak", "maxdailystreak", "workcount"] as const;
 
 /**
- * Investment metrics that require portfolio calculations
- */
-const investmentMetrics = ["investmentvalue", "investmentprofit", "totalwealth"] as const;
-
-/**
- * All available metrics for leaderboard
- */
-const allMetrics = [...standardMetrics, ...investmentMetrics] as const;
-
-/**
  * Top users leaderboard contract
  * GET /users/leaderboard - Retrieves top users by specified metric
- * Supports various metrics including investment-based ones and configurable limit
+ * For investment leaderboards, use /investments/leaderboard endpoint
  */
 export const leaderboard = base
 	.input(
 		z.object({
-			metric: z.enum(allMetrics).default("coins"),
+			metric: z.enum(standardMetrics).default("coins"),
 			limit: z.number().int().min(1).max(100).default(10),
 		}),
 	)
@@ -265,14 +220,6 @@ export const leaderboard = base
 	)
 	.handler(async ({ input, context }) => {
 		const { metric, limit } = input;
-
-		// Check if this is an investment-based metric
-		const isInvestmentMetric = (investmentMetrics as readonly string[]).includes(metric);
-
-		if (isInvestmentMetric) {
-			// Handle investment metrics - requires portfolio calculations
-			return await calculateInvestmentLeaderboard(context, metric as typeof investmentMetrics[number], limit);
-		}
 
 		// Standard metrics from user_stats table
 		const metricColumn = {
@@ -317,132 +264,6 @@ export const leaderboard = base
 			};
 		});
 	});
-
-/**
- * Helper function to calculate investment-based leaderboards
- */
-async function calculateInvestmentLeaderboard(
-	context: { db: BunSQLDatabase<typeof schema, typeof relations> },
-	metric: (typeof investmentMetrics)[number],
-	limit: number,
-): Promise<Array<{
-	user: { id: number; discordId: string | null; guildedId: string | null; username: string | null };
-	metricValue: number;
-	rank: number;
-}>> {
-	// Get all portfolios with positive holdings
-	const portfolios = await context.db
-		.select({
-			userId: investmentPortfoliosTable.userId,
-			assetId: investmentPortfoliosTable.assetId,
-			quantity: investmentPortfoliosTable.quantity,
-			totalInvested: investmentPortfoliosTable.totalInvested,
-			realizedGains: investmentPortfoliosTable.realizedGains,
-			averageBuyPrice: investmentPortfoliosTable.averageBuyPrice,
-		})
-		.from(investmentPortfoliosTable);
-
-	if (portfolios.length === 0) {
-		return [];
-	}
-
-	// Get latest prices for all assets
-	const assetIds = [...new Set(portfolios.map((p) => p.assetId))];
-	const priceMap = new Map<number, number>();
-
-	for (const assetId of assetIds) {
-		const priceData = await context.db.query.investmentPriceCacheTable.findFirst({
-			where: { assetId },
-			orderBy: { priceTimestamp: "desc" },
-		});
-		if (priceData) {
-			priceMap.set(assetId, priceData.price);
-		}
-	}
-
-	// Aggregate metrics by user
-	const userMetrics = new Map<number, { totalInvested: number; currentValue: number; realizedGains: number }>();
-
-	for (const portfolio of portfolios) {
-		const currentPrice = priceMap.get(portfolio.assetId) || portfolio.averageBuyPrice;
-		const currentValue = Math.floor((portfolio.quantity * currentPrice) / 100000);
-
-		const existing = userMetrics.get(portfolio.userId) || { totalInvested: 0, currentValue: 0, realizedGains: 0 };
-		userMetrics.set(portfolio.userId, {
-			totalInvested: existing.totalInvested + portfolio.totalInvested,
-			currentValue: existing.currentValue + currentValue,
-			realizedGains: existing.realizedGains + portfolio.realizedGains,
-		});
-	}
-
-	// Get user info and coins for totalwealth calculation
-	const userIds = [...userMetrics.keys()];
-	if (userIds.length === 0) {
-		return [];
-	}
-
-	const users = await context.db
-		.select({
-			id: usersTable.id,
-			discordId: usersTable.discordId,
-			guildedId: usersTable.guildedId,
-			username: usersTable.username,
-		})
-		.from(usersTable)
-		.where(sql`${usersTable.id} IN (${sql.join(userIds.map((id) => sql`${id}`), sql`, `)})`);
-
-	const userMap = new Map(users.map((u) => [u.id, u]));
-
-	// Get coins for totalwealth metric
-	let userCoinsMap = new Map<number, number>();
-	if (metric === "totalwealth") {
-		const userStatsRows = await context.db
-			.select({
-				userId: userStatsTable.userId,
-				coinsCount: userStatsTable.coinsCount,
-			})
-			.from(userStatsTable)
-			.where(sql`${userStatsTable.userId} IN (${sql.join(userIds.map((id) => sql`${id}`), sql`, `)})`);
-
-		userCoinsMap = new Map(userStatsRows.map((s) => [s.userId, s.coinsCount]));
-	}
-
-	// Build entries with metric values
-	const entries = [...userMetrics.entries()]
-		.map(([userId, metrics]) => {
-			const user = userMap.get(userId);
-			if (!user) return null;
-
-			let metricValue: number;
-			switch (metric) {
-				case "investmentvalue":
-					metricValue = metrics.currentValue;
-					break;
-				case "investmentprofit":
-					metricValue = metrics.currentValue - metrics.totalInvested + metrics.realizedGains;
-					break;
-				case "totalwealth": {
-					const coins = userCoinsMap.get(userId) || 0;
-					metricValue = coins + metrics.currentValue;
-					break;
-				}
-				default:
-					metricValue = 0;
-			}
-
-			return { user, metricValue };
-		})
-		.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-
-	// Sort by metric value descending and add ranks
-	return entries
-		.sort((a, b) => b.metricValue - a.metricValue)
-		.slice(0, limit)
-		.map((entry, index) => ({
-			...entry,
-			rank: index + 1,
-		}));
-}
 
 /**
  * Log captcha attempt with detailed reasoning
