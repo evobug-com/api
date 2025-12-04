@@ -26,14 +26,14 @@
 		"@typescript/native-preview": "latest",
 		"csv-parse": "^6.1.0",
 		"drizzle-kit": "alternation-engine",
-		"oxlint": "^1.30.0",
+		"oxlint": "^1.31.0",
 		"oxlint-tsgolint": "^0.8.3"
 	},
 	"dependencies": {
 		"@electric-sql/pglite": "^0.3.14",
-		"@orpc/client": "^1.11.3",
-		"@orpc/contract": "^1.11.3",
-		"@orpc/server": "^1.11.3",
+		"@orpc/client": "^1.12.2",
+		"@orpc/contract": "^1.12.2",
+		"@orpc/server": "^1.12.2",
 		"drizzle-orm": "alternation-engine",
 		"drizzle-zod": "alternation-engine",
 		"node-cron": "^4.2.1",

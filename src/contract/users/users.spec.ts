@@ -7,7 +7,7 @@ import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema.ts";
 import { type DbUser, userStatsTable, usersTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
-import { createUser, updateUser } from "./index.ts";
+import { createUser, getAllDiscordIds, updateUser } from "./index.ts";
 
 describe("Users", () => {
 	let db: BunSQLDatabase<typeof schema, typeof relations>;
@@ -553,12 +553,89 @@ describe("Users", () => {
 });
 
 describe("User retrieval functions", () => {
-	let _db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof schema, typeof relations>;
 
 	beforeEach(async () => {
-		_db = await createTestDatabase();
+		db = await createTestDatabase();
 	});
 
-	// Add tests for any user retrieval functions if they exist
-	// For example: getUser, getUserById, getUserByDiscordId, etc.
+	describe("getAllDiscordIds", () => {
+		it("should return empty array when no users exist", async () => {
+			const result = await call(getAllDiscordIds, {}, createTestContext(db));
+			expect(result).toEqual([]);
+		});
+
+		it("should return only users with Discord IDs", async () => {
+			// Create user with Discord ID
+			await call(
+				createUser,
+				{
+					username: "discorduser1",
+					discordId: "discord-123",
+				},
+				createTestContext(db),
+			);
+
+			// Create user without Discord ID
+			await call(
+				createUser,
+				{
+					username: "nodiscorduser",
+				},
+				createTestContext(db),
+			);
+
+			// Create another user with Discord ID
+			await call(
+				createUser,
+				{
+					username: "discorduser2",
+					discordId: "discord-456",
+				},
+				createTestContext(db),
+			);
+
+			const result = await call(getAllDiscordIds, {}, createTestContext(db));
+
+			expect(result).toHaveLength(2);
+			expect(result.map((u) => u.discordId).sort()).toEqual(["discord-123", "discord-456"]);
+		});
+
+		it("should return id and discordId for each user", async () => {
+			const user = await call(
+				createUser,
+				{
+					username: "testdiscordid",
+					discordId: "test-discord-id",
+				},
+				createTestContext(db),
+			);
+
+			const result = await call(getAllDiscordIds, {}, createTestContext(db));
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				id: user.id,
+				discordId: "test-discord-id",
+			});
+		});
+
+		it("should handle many users efficiently", async () => {
+			// Create 20 users with Discord IDs
+			for (let i = 0; i < 20; i++) {
+				await call(
+					createUser,
+					{
+						username: `batchuser${i}`,
+						discordId: `batch-discord-${i}`,
+					},
+					createTestContext(db),
+				);
+			}
+
+			const result = await call(getAllDiscordIds, {}, createTestContext(db));
+
+			expect(result).toHaveLength(20);
+		});
+	});
 });
