@@ -1,4 +1,5 @@
-import { eq, getTableColumns } from "drizzle-orm";
+import { eq, getTableColumns, sql } from "drizzle-orm";
+import { z } from "zod";
 import {
 	type InsertDbUser,
 	type InsertDbUserStats,
@@ -196,6 +197,22 @@ export const updateUser = base
 			throw errors.DATABASE_ERROR();
 		}
 		return updatedUser;
+	});
+
+/**
+ * Get all Discord IDs of registered users
+ * Used for batch operations like server tag streak checks
+ * Returns only users that have a Discord ID set
+ */
+export const getAllDiscordIds = base
+	.output(z.array(z.object({ id: z.number(), discordId: z.string() })))
+	.handler(async ({ context }) => {
+		const users = await context.db
+			.select({ id: usersTable.id, discordId: usersTable.discordId })
+			.from(usersTable)
+			.where(sql`${usersTable.discordId} IS NOT NULL`);
+
+		return users.filter((u): u is { id: number; discordId: string } => u.discordId !== null);
 	});
 
 //

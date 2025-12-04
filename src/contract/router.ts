@@ -67,7 +67,7 @@ import {
 	listSuspensions,
 } from "./suspensions";
 // User Management
-import { createUser, getUser, updateUser } from "./users";
+import { createUser, getAllDiscordIds, getUser, updateUser } from "./users";
 // Investment System
 import {
 	buyAsset,
@@ -103,6 +103,7 @@ export const router = {
 		create: createUser,
 		get: getUser,
 		update: updateUser,
+		getAllDiscordIds: getAllDiscordIds, // GET /users/all-discord-ids - For batch operations
 		//     me: currentUser, // GET /users/me
 		//     leaderboard: leaderboard, // GET /users/leaderboard
 		//     password: {
