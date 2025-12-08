@@ -4,7 +4,6 @@ import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
 import { drizzle } from "drizzle-orm/bun-sql";
 import cron from "node-cron";
 import { router } from "./contract/router.ts";
-import { createTestDatabase } from "./contract/shared/test-utils.ts";
 import { relations } from "./db/relations.ts";
 import type { DbUser } from "./db/schema.ts";
 import * as schema from "./db/schema.ts";

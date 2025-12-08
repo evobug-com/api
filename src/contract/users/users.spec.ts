@@ -5,9 +5,10 @@ import { eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
 import type { relations } from "../../db/relations.ts";
 import type * as schema from "../../db/schema.ts";
-import { type DbUser, userStatsTable, usersTable } from "../../db/schema.ts";
+import { type DbUser, userStatsTable, usersTable, ordersTable, productsTable, userStatsLogTable } from "../../db/schema.ts";
 import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
-import { createUser, getAllDiscordIds, updateUser } from "./index.ts";
+import { createUser, getAllDiscordIds, updateUser, getUserOrders, getEconomyActivities, changePassword, setPassword, linkEmail, setUsername, requestDiscordVerification } from "./index.ts";
+import { register } from "../auth/index.ts";
 
 describe("Users", () => {
 	let db: BunSQLDatabase<typeof schema, typeof relations>;
@@ -636,6 +637,739 @@ describe("User retrieval functions", () => {
 			const result = await call(getAllDiscordIds, {}, createTestContext(db));
 
 			expect(result).toHaveLength(20);
+		});
+	});
+
+	describe("getUserOrders", () => {
+		it("should return empty array for user with no orders", async () => {
+			const user = await call(
+				createUser,
+				{ username: "noordersuser" },
+				createTestContext(db),
+			);
+
+			const result = await call(
+				getUserOrders,
+				{ userId: user.id },
+				createTestContext(db),
+			);
+
+			expect(result).toEqual([]);
+		});
+
+		it("should return orders with product info", async () => {
+			const user = await call(
+				createUser,
+				{ username: "orderuser" },
+				createTestContext(db),
+			);
+
+			// Create a product
+			const productId = crypto.randomUUID();
+			await db.insert(productsTable).values({
+				id: productId,
+				name: "Test Product",
+				price: 100,
+				description: "A test product",
+				isActive: true,
+			});
+
+			// Create an order
+			await db.insert(ordersTable).values({
+				userId: user.id,
+				productId: productId,
+				price: 100,
+				size: "M",
+				status: "completed",
+			});
+
+			const result = await call(
+				getUserOrders,
+				{ userId: user.id },
+				createTestContext(db),
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toStrictEqual(
+				expect.objectContaining({
+					userId: user.id,
+					productId: productId,
+					price: 100,
+					size: "M",
+					status: "completed",
+					product: expect.objectContaining({
+						id: productId,
+						name: "Test Product",
+						price: 100,
+					}),
+				}),
+			);
+		});
+
+		it("should return orders ordered by creation date descending", async () => {
+			const user = await call(
+				createUser,
+				{ username: "multiorderuser" },
+				createTestContext(db),
+			);
+
+			const productId = crypto.randomUUID();
+			await db.insert(productsTable).values({
+				id: productId,
+				name: "Multi Order Product",
+				price: 50,
+				isActive: true,
+			});
+
+			// Create multiple orders
+			for (let i = 0; i < 3; i++) {
+				await db.insert(ordersTable).values({
+					userId: user.id,
+					productId: productId,
+					price: 50 + i * 10,
+					status: "completed",
+				});
+			}
+
+			const result = await call(
+				getUserOrders,
+				{ userId: user.id },
+				createTestContext(db),
+			);
+
+			expect(result).toHaveLength(3);
+		});
+	});
+
+	describe("getEconomyActivities", () => {
+		it("should return empty array for user with no activities", async () => {
+			const user = await call(
+				createUser,
+				{ username: "noactivitiesuser" },
+				createTestContext(db),
+			);
+
+			const result = await call(
+				getEconomyActivities,
+				{ userId: user.id },
+				createTestContext(db),
+			);
+
+			expect(result).toEqual([]);
+		});
+
+		it("should return activity logs for user", async () => {
+			const user = await call(
+				createUser,
+				{ username: "activityuser" },
+				createTestContext(db),
+			);
+
+			// Create activity logs
+			await db.insert(userStatsLogTable).values({
+				userId: user.id,
+				activityType: "message",
+				xpEarned: 10,
+				coinsEarned: 5,
+				notes: "Sent a message",
+			});
+
+			const result = await call(
+				getEconomyActivities,
+				{ userId: user.id },
+				createTestContext(db),
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toStrictEqual(
+				expect.objectContaining({
+					activityType: "message",
+					xpEarned: 10,
+					coinsEarned: 5,
+					notes: "Sent a message",
+				}),
+			);
+		});
+
+		it("should limit results to 50 activities", async () => {
+			const user = await call(
+				createUser,
+				{ username: "manyactivitiesuser" },
+				createTestContext(db),
+			);
+
+			// Create 60 activity logs
+			for (let i = 0; i < 60; i++) {
+				await db.insert(userStatsLogTable).values({
+					userId: user.id,
+					activityType: "test",
+					xpEarned: i,
+					coinsEarned: i,
+				});
+			}
+
+			const result = await call(
+				getEconomyActivities,
+				{ userId: user.id },
+				createTestContext(db),
+			);
+
+			expect(result).toHaveLength(50);
+		});
+	});
+
+	describe("changePassword", () => {
+		it("should change password with correct old password", async () => {
+			const authResult = await call(
+				register,
+				{
+					username: "changepwuser",
+					email: "changepw@example.com",
+					password: "oldpassword123",
+				},
+				createTestContext(db),
+			);
+
+			const result = await call(
+				changePassword,
+				{
+					token: authResult.token,
+					oldPassword: "oldpassword123",
+					newPassword: "newpassword456",
+				},
+				createTestContext(db),
+			);
+
+			expect(result).toStrictEqual({
+				success: true,
+				message: "Password changed successfully",
+			});
+		});
+
+		it("should reject with incorrect old password", async () => {
+			const authResult = await call(
+				register,
+				{
+					username: "wrongpwuser",
+					email: "wrongpw@example.com",
+					password: "correctpassword",
+				},
+				createTestContext(db),
+			);
+
+			expect(
+				call(
+					changePassword,
+					{
+						token: authResult.token,
+						oldPassword: "wrongpassword",
+						newPassword: "newpassword456",
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow(
+				new ORPCError("INVALID_PASSWORD", {
+					message: "Current password is incorrect",
+				}),
+			);
+		});
+
+		it("should reject with invalid token", async () => {
+			expect(
+				call(
+					changePassword,
+					{
+						token: "invalid-token",
+						oldPassword: "oldpassword",
+						newPassword: "newpassword",
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow();
+		});
+
+		it("should reject short new password", async () => {
+			const authResult = await call(
+				register,
+				{
+					username: "shortpwchange",
+					email: "shortpwchange@example.com",
+					password: "validpassword",
+				},
+				createTestContext(db),
+			);
+
+			expect(
+				call(
+					changePassword,
+					{
+						token: authResult.token,
+						oldPassword: "validpassword",
+						newPassword: "12345", // Less than 6 chars
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow();
+		});
+	});
+
+	describe("setPassword", () => {
+		it("should set password for account without password", async () => {
+			// Create user without password (Discord-only account)
+			const user = await call(
+				createUser,
+				{
+					username: "discordonlyuser",
+					discordId: "discord-id-123",
+				},
+				createTestContext(db),
+			);
+
+			// Generate a token for this user manually
+			const { SignJWT } = await import("jose");
+			const JWT_SECRET = new TextEncoder().encode(
+				process.env.JWT_SECRET || "allcom-zone-secret-key-change-in-production"
+			);
+			const token = await new SignJWT({ userId: user.id })
+				.setProtectedHeader({ alg: "HS256" })
+				.setIssuedAt()
+				.setExpirationTime("7d")
+				.sign(JWT_SECRET);
+
+			const result = await call(
+				setPassword,
+				{
+					token,
+					newPassword: "newpassword123",
+				},
+				createTestContext(db),
+			);
+
+			expect(result).toStrictEqual({
+				success: true,
+				message: "Password set successfully",
+			});
+		});
+
+		it("should reject if password is already set", async () => {
+			const authResult = await call(
+				register,
+				{
+					username: "haspassworduser",
+					email: "haspassword@example.com",
+					password: "existingpassword",
+				},
+				createTestContext(db),
+			);
+
+			expect(
+				call(
+					setPassword,
+					{
+						token: authResult.token,
+						newPassword: "newpassword123",
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow(
+				new ORPCError("PASSWORD_ALREADY_SET", {
+					message: "Password is already set for this account",
+				}),
+			);
+		});
+
+		it("should reject invalid token", async () => {
+			expect(
+				call(
+					setPassword,
+					{
+						token: "invalid-token",
+						newPassword: "newpassword123",
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow();
+		});
+	});
+
+	describe("linkEmail", () => {
+		it("should link email to account without email", async () => {
+			// Create user without email
+			const user = await call(
+				createUser,
+				{
+					username: "noemailuser",
+					discordId: "discord-noemail",
+				},
+				createTestContext(db),
+			);
+
+			const { SignJWT } = await import("jose");
+			const JWT_SECRET = new TextEncoder().encode(
+				process.env.JWT_SECRET || "allcom-zone-secret-key-change-in-production"
+			);
+			const token = await new SignJWT({ userId: user.id })
+				.setProtectedHeader({ alg: "HS256" })
+				.setIssuedAt()
+				.setExpirationTime("7d")
+				.sign(JWT_SECRET);
+
+			const result = await call(
+				linkEmail,
+				{
+					token,
+					email: "newemail@example.com",
+					password: "newpassword123",
+				},
+				createTestContext(db),
+			);
+
+			expect(result).toStrictEqual({
+				success: true,
+				message: "Email linked successfully",
+				data: {
+					userId: user.id,
+					email: "newemail@example.com",
+				},
+			});
+		});
+
+		it("should reject if email is already set", async () => {
+			const authResult = await call(
+				register,
+				{
+					username: "hasemailuser",
+					email: "existing@example.com",
+					password: "password123",
+				},
+				createTestContext(db),
+			);
+
+			expect(
+				call(
+					linkEmail,
+					{
+						token: authResult.token,
+						email: "another@example.com",
+						password: "password123",
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow(
+				new ORPCError("EMAIL_ALREADY_SET", {
+					message: "Email is already set for this account",
+				}),
+			);
+		});
+
+		it("should reject if email is already in use by another user", async () => {
+			// Create first user with email
+			await call(
+				register,
+				{
+					username: "firstuser",
+					email: "taken@example.com",
+					password: "password123",
+				},
+				createTestContext(db),
+			);
+
+			// Create second user without email
+			const secondUser = await call(
+				createUser,
+				{
+					username: "seconduser",
+					discordId: "discord-second",
+				},
+				createTestContext(db),
+			);
+
+			const { SignJWT } = await import("jose");
+			const JWT_SECRET = new TextEncoder().encode(
+				process.env.JWT_SECRET || "allcom-zone-secret-key-change-in-production"
+			);
+			const token = await new SignJWT({ userId: secondUser.id })
+				.setProtectedHeader({ alg: "HS256" })
+				.setIssuedAt()
+				.setExpirationTime("7d")
+				.sign(JWT_SECRET);
+
+			expect(
+				call(
+					linkEmail,
+					{
+						token,
+						email: "taken@example.com", // Already in use
+						password: "password123",
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow(
+				new ORPCError("EMAIL_IN_USE", {
+					message: "Email is already in use",
+				}),
+			);
+		});
+
+		it("should reject invalid token", async () => {
+			expect(
+				call(
+					linkEmail,
+					{
+						token: "invalid-token",
+						email: "test@example.com",
+						password: "password123",
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow();
+		});
+	});
+
+	describe("setUsername", () => {
+		it("should set username for account without username", async () => {
+			// Create user without username
+			const user = await call(
+				createUser,
+				{
+					discordId: "discord-nousername",
+				},
+				createTestContext(db),
+			);
+
+			const { SignJWT } = await import("jose");
+			const JWT_SECRET = new TextEncoder().encode(
+				process.env.JWT_SECRET || "allcom-zone-secret-key-change-in-production"
+			);
+			const token = await new SignJWT({ userId: user.id })
+				.setProtectedHeader({ alg: "HS256" })
+				.setIssuedAt()
+				.setExpirationTime("7d")
+				.sign(JWT_SECRET);
+
+			const result = await call(
+				setUsername,
+				{
+					token,
+					username: "newusername",
+				},
+				createTestContext(db),
+			);
+
+			expect(result).toStrictEqual({
+				success: true,
+				message: "Username set successfully",
+				username: "newusername",
+			});
+		});
+
+		it("should reject if username is already set", async () => {
+			const authResult = await call(
+				register,
+				{
+					username: "existingusername",
+					email: "existingname@example.com",
+					password: "password123",
+				},
+				createTestContext(db),
+			);
+
+			expect(
+				call(
+					setUsername,
+					{
+						token: authResult.token,
+						username: "anotherusername",
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow(
+				new ORPCError("USERNAME_ALREADY_SET", {
+					message: "Username is already set for this account",
+				}),
+			);
+		});
+
+		it("should reject if username is already taken", async () => {
+			// Create first user with username
+			await call(
+				register,
+				{
+					username: "takenusername",
+					email: "taken@example.com",
+					password: "password123",
+				},
+				createTestContext(db),
+			);
+
+			// Create second user without username
+			const secondUser = await call(
+				createUser,
+				{
+					discordId: "discord-wantsusername",
+				},
+				createTestContext(db),
+			);
+
+			const { SignJWT } = await import("jose");
+			const JWT_SECRET = new TextEncoder().encode(
+				process.env.JWT_SECRET || "allcom-zone-secret-key-change-in-production"
+			);
+			const token = await new SignJWT({ userId: secondUser.id })
+				.setProtectedHeader({ alg: "HS256" })
+				.setIssuedAt()
+				.setExpirationTime("7d")
+				.sign(JWT_SECRET);
+
+			expect(
+				call(
+					setUsername,
+					{
+						token,
+						username: "takenusername", // Already in use
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow(
+				new ORPCError("USERNAME_TAKEN", {
+					message: "This username is already taken",
+				}),
+			);
+		});
+
+		it("should reject username with invalid characters", async () => {
+			const user = await call(
+				createUser,
+				{
+					discordId: "discord-invalidchars",
+				},
+				createTestContext(db),
+			);
+
+			const { SignJWT } = await import("jose");
+			const JWT_SECRET = new TextEncoder().encode(
+				process.env.JWT_SECRET || "allcom-zone-secret-key-change-in-production"
+			);
+			const token = await new SignJWT({ userId: user.id })
+				.setProtectedHeader({ alg: "HS256" })
+				.setIssuedAt()
+				.setExpirationTime("7d")
+				.sign(JWT_SECRET);
+
+			expect(
+				call(
+					setUsername,
+					{
+						token,
+						username: "invalid@username!", // Contains invalid characters
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow();
+		});
+
+		it("should reject username that is too short", async () => {
+			const user = await call(
+				createUser,
+				{
+					discordId: "discord-shortname",
+				},
+				createTestContext(db),
+			);
+
+			const { SignJWT } = await import("jose");
+			const JWT_SECRET = new TextEncoder().encode(
+				process.env.JWT_SECRET || "allcom-zone-secret-key-change-in-production"
+			);
+			const token = await new SignJWT({ userId: user.id })
+				.setProtectedHeader({ alg: "HS256" })
+				.setIssuedAt()
+				.setExpirationTime("7d")
+				.sign(JWT_SECRET);
+
+			expect(
+				call(
+					setUsername,
+					{
+						token,
+						username: "ab", // Less than 3 chars
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow();
+		});
+
+		it("should reject invalid token", async () => {
+			expect(
+				call(
+					setUsername,
+					{
+						token: "invalid-token",
+						username: "validusername",
+					},
+					createTestContext(db),
+				),
+			).rejects.toThrow();
+		});
+	});
+
+	describe("requestDiscordVerification", () => {
+		it("should return a verification code", async () => {
+			const authResult = await call(
+				register,
+				{
+					username: "verifyuser",
+					email: "verify@example.com",
+					password: "password123",
+				},
+				createTestContext(db),
+			);
+
+			const result = await call(
+				requestDiscordVerification,
+				{ token: authResult.token },
+				createTestContext(db),
+			);
+
+			expect(result.code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+			expect(result.expiresAt).toBeDefined();
+			expect(new Date(result.expiresAt).getTime()).toBeGreaterThan(Date.now());
+		});
+
+		it("should return different codes on each request", async () => {
+			const authResult = await call(
+				register,
+				{
+					username: "multipleverify",
+					email: "multipleverify@example.com",
+					password: "password123",
+				},
+				createTestContext(db),
+			);
+
+			const result1 = await call(
+				requestDiscordVerification,
+				{ token: authResult.token },
+				createTestContext(db),
+			);
+
+			const result2 = await call(
+				requestDiscordVerification,
+				{ token: authResult.token },
+				createTestContext(db),
+			);
+
+			expect(result1.code).not.toBe(result2.code);
+		});
+
+		it("should reject invalid token", async () => {
+			expect(
+				call(
+					requestDiscordVerification,
+					{ token: "invalid-token" },
+					createTestContext(db),
+				),
+			).rejects.toThrow();
 		});
 	});
 });

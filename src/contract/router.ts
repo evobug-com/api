@@ -34,7 +34,11 @@ import {
 // Standing Management
 import { calculateStanding, getBulkStandings, getStanding, getUserRestrictions } from "./standing";
 // Authentication & Session Management
-// import { createSession, deleteSession } from "./auth";
+import { login, register, me, discordCallback } from "./auth";
+// Shop System
+import { listProducts, getProduct, purchase } from "./shop";
+// Reviews System
+import { list as listReviews, eligibility as reviewEligibility, myReview, submit as submitReview } from "./reviews";
 // Stats & Rewards System
 import {
 	checkAutomationPatterns,
@@ -67,7 +71,19 @@ import {
 	listSuspensions,
 } from "./suspensions";
 // User Management
-import { createUser, getAllDiscordIds, getUser, updateUser } from "./users";
+import {
+	changePassword,
+	createUser,
+	getAllDiscordIds,
+	getEconomyActivities,
+	getUser,
+	getUserOrders,
+	linkEmail,
+	requestDiscordVerification,
+	setPassword,
+	setUsername,
+	updateUser,
+} from "./users";
 // Investment System
 import {
 	buyAsset,
@@ -91,12 +107,29 @@ import {
 
 export const router = {
 	// Authentication endpoints
-	// auth: {
-	// 	sessions: {
-	// 		create: createSession, // POST /auth/sessions (login)
-	// 		delete: deleteSession, // DELETE /auth/sessions (logout)
-	// 	},
-	// },
+	auth: {
+		login,      // POST /auth/login
+		register,   // POST /auth/register
+		me,         // GET /auth/me
+		discordCallback, // GET /auth/discord/callback
+	},
+
+	// Shop endpoints
+	shop: {
+		products: {
+			list: listProducts,   // GET /shop/products
+			get: getProduct,      // GET /shop/products/{id}
+		},
+		purchase,                 // POST /shop/purchase
+	},
+
+	// Reviews endpoints
+	reviews: {
+		list: listReviews,         // GET /reviews
+		eligibility: reviewEligibility, // GET /reviews/eligibility
+		me: myReview,              // GET /reviews/me
+		submit: submitReview,      // POST /reviews
+	},
 
 	// User management endpoints
 	users: {
@@ -104,6 +137,17 @@ export const router = {
 		get: getUser,
 		update: updateUser,
 		getAllDiscordIds: getAllDiscordIds, // GET /users/all-discord-ids - For batch operations
+		orders: getUserOrders, // GET /users/{userId}/orders
+		economyActivities: getEconomyActivities, // GET /users/{userId}/economy-activities
+		password: {
+			change: changePassword, // POST /users/me/password/change
+			set: setPassword, // POST /users/me/password/set
+		},
+		linkEmail: linkEmail, // POST /users/me/email
+		setUsername: setUsername, // POST /users/me/username
+		discord: {
+			requestVerification: requestDiscordVerification, // POST /users/me/discord/verification
+		},
 		//     me: currentUser, // GET /users/me
 		//     leaderboard: leaderboard, // GET /users/leaderboard
 		//     password: {

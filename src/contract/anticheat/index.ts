@@ -564,7 +564,7 @@ export const updateTrustScore = base
 			oldScore: z.number(),
 		}),
 	)
-	.handler(async ({ input, context, errors }) => {
+	.handler(async ({ input, context }) => {
 		// Get current trust score
 		const [trustScore] = await context.db
 			.select()
