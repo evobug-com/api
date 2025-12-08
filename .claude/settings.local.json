@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun run:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(rmdir:*)",
+      "Bash(rm:*)",
+      "Bash(bunx tsgo:*)",
+      "Bash(bun test:*)",
+      "Bash(bunx oxlint:*)",
+      "Bash(timeout 30 bun test src/contract/stats/stats.spec.ts)",
+      "Bash(timeout 15 bun test:*)",
+      "Bash(timeout 10 bun test:*)",
+      "Read(D:\\projects\\evobug.com/**)",
+      "Read(D:\\projects\\evobug.com\\bots/**)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Read(//d/projects/evobug.com/bots/src/achievements/bot-achievements/**)",
+      "Read(//d/projects/evobug.com/bots/src/achievements/**)",
+      "Read(//d/projects/evobug.com/bots/src/client/**)",
+      "Read(//d/projects/evobug.com/bots/src/**)",
+      "Read(//d/projects/evobug.com/bots/**)",
+      "Bash(timeout:*)",
+      "Bash(node:*)",
+      "Read(//d/projects/evobug.com/**)",
+      "WebSearch",
+      "Bash(bun add:*)",
+      "Skill(superpowers:brainstorming)"
+    ],
+    "deny": []
+  }
+}
