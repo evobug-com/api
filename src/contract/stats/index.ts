@@ -195,7 +195,16 @@ export const userStatsWithInvestments = base
  * Standard metrics that can be queried from user_stats table
  * Investment metrics are available via the dedicated /investments/leaderboard endpoint
  */
-const standardMetrics = ["coins", "xp", "level", "dailystreak", "maxdailystreak", "workcount"] as const;
+const standardMetrics = [
+	"coins",
+	"xp",
+	"level",
+	"dailystreak",
+	"maxdailystreak",
+	"workcount",
+	"activityweekly",
+	"activitylifetime",
+] as const;
 
 /**
  * Top users leaderboard contract
@@ -229,7 +238,9 @@ export const leaderboard = base
 			dailystreak: userStatsTable.dailyStreak,
 			maxdailystreak: userStatsTable.maxDailyStreak,
 			workcount: userStatsTable.workCount,
-		}[metric as typeof standardMetrics[number]];
+			activityweekly: userStatsTable.activityPointsWeekly,
+			activitylifetime: userStatsTable.activityPointsLifetime,
+		}[metric as (typeof standardMetrics)[number]];
 
 		// Query the top users with their stats
 		const topUsers = await context.db
@@ -1954,3 +1965,393 @@ export const checkVoiceTimeMilestone = base
 // 			message: "Work recovery not yet implemented",
 // 		});
 // 	});
+
+// ============================================================================
+// ACTIVITY POINTS SYSTEM
+// ============================================================================
+
+/**
+ * Activity types that can earn points
+ */
+const activityTypeEnum = z.enum(["message", "voice_time", "reaction", "thread_created", "thread_reply"]);
+
+/**
+ * Point values for each activity type
+ */
+const ACTIVITY_POINTS = {
+	message: 1,
+	voice_time: 5, // Per 10 minutes
+	reaction: 1,
+	thread_created: 10,
+	thread_reply: 2,
+} as const;
+
+const WEEKLY_CAP = 1000;
+
+/**
+ * Track activity points for a user
+ * Called by the bot when a user performs an activity
+ */
+export const trackActivityPoints = base
+	.input(
+		z.object({
+			userId: z.number(),
+			activityType: activityTypeEnum,
+			points: z.number().min(0).optional(), // Override default points if needed
+		}),
+	)
+	.errors({
+		NOT_FOUND: { message: "User stats not found" },
+		DATABASE_ERROR: { message: "Failed to update activity points" },
+	})
+	.output(
+		z.object({
+			success: z.boolean(),
+			pointsAwarded: z.number(),
+			weeklyCapReached: z.boolean(),
+			lifetimeTotal: z.number(),
+			weeklyTotal: z.number(),
+			weeklyRemaining: z.number(),
+		}),
+	)
+	.handler(async ({ input, context, errors }) => {
+		const db = context.db;
+
+		// Get user stats
+		const userStats = await db.query.userStatsTable.findFirst({
+			where: { userId: input.userId },
+		});
+
+		if (!userStats) {
+			throw errors.NOT_FOUND();
+		}
+
+		const now = new Date();
+
+		// Calculate points to award (capped by weekly limit)
+		const basePoints = input.points ?? ACTIVITY_POINTS[input.activityType];
+		const remainingCap = Math.max(0, WEEKLY_CAP - userStats.activityPointsWeekly);
+		const pointsToAward = Math.min(basePoints, remainingCap);
+
+		// If no points to award (cap reached), return early
+		if (pointsToAward === 0) {
+			return {
+				success: true,
+				pointsAwarded: 0,
+				weeklyCapReached: true,
+				lifetimeTotal: userStats.activityPointsLifetime,
+				weeklyTotal: userStats.activityPointsWeekly,
+				weeklyRemaining: 0,
+			};
+		}
+
+		// Update stats
+		try {
+			const [updatedStats] = await db
+				.update(userStatsTable)
+				.set({
+					activityPointsLifetime: userStats.activityPointsLifetime + pointsToAward,
+					activityPointsWeekly: userStats.activityPointsWeekly + pointsToAward,
+					updatedAt: now,
+				})
+				.where(eq(userStatsTable.userId, input.userId))
+				.returning();
+
+			if (!updatedStats) {
+				throw errors.DATABASE_ERROR();
+			}
+
+			return {
+				success: true,
+				pointsAwarded: pointsToAward,
+				weeklyCapReached: updatedStats.activityPointsWeekly >= WEEKLY_CAP,
+				lifetimeTotal: updatedStats.activityPointsLifetime,
+				weeklyTotal: updatedStats.activityPointsWeekly,
+				weeklyRemaining: Math.max(0, WEEKLY_CAP - updatedStats.activityPointsWeekly),
+			};
+		} catch (error) {
+			console.error("Error tracking activity points:", error);
+			throw errors.DATABASE_ERROR();
+		}
+	});
+
+/**
+ * Activity points leaderboard metrics
+ */
+const activityLeaderboardMetrics = ["activityweekly", "activitylifetime"] as const;
+
+/**
+ * Get activity points leaderboard
+ */
+export const activityPointsLeaderboard = base
+	.input(
+		z.object({
+			scope: z.enum(activityLeaderboardMetrics),
+			limit: z.number().int().min(1).max(100).default(10),
+		}),
+	)
+	.output(
+		z.array(
+			z.object({
+				user: userSchema.pick({ id: true, discordId: true, guildedId: true, username: true }),
+				points: z.number(),
+				rank: z.number(),
+			}),
+		),
+	)
+	.handler(async ({ input, context }) => {
+		const { scope, limit } = input;
+
+		const metricColumn =
+			scope === "activityweekly" ? userStatsTable.activityPointsWeekly : userStatsTable.activityPointsLifetime;
+
+		const topUsers = await context.db
+			.select({
+				userId: userStatsTable.userId,
+				points: metricColumn,
+				user: {
+					id: usersTable.id,
+					discordId: usersTable.discordId,
+					guildedId: usersTable.guildedId,
+					username: usersTable.username,
+				},
+			})
+			.from(userStatsTable)
+			.innerJoin(usersTable, eq(userStatsTable.userId, usersTable.id))
+			.where(gte(metricColumn, 1)) // Only users with at least 1 point
+			.orderBy(desc(metricColumn))
+			.limit(limit);
+
+		return topUsers.map((row, index) => ({
+			user: row.user,
+			points: row.points,
+			rank: index + 1,
+		}));
+	});
+
+/**
+ * Weekly prizes configuration
+ */
+const WEEKLY_PRIZES: Record<number, { coins: number; xp: number }> = {
+	1: { coins: 5000, xp: 2000 },
+	2: { coins: 3000, xp: 1200 },
+	3: { coins: 2000, xp: 800 },
+	4: { coins: 1000, xp: 400 },
+	5: { coins: 1000, xp: 400 },
+	6: { coins: 1000, xp: 400 },
+	7: { coins: 1000, xp: 400 },
+	8: { coins: 1000, xp: 400 },
+	9: { coins: 1000, xp: 400 },
+	10: { coins: 1000, xp: 400 },
+};
+
+/**
+ * Reset weekly activity points and distribute prizes
+ * Called by the bot scheduler every Monday
+ */
+export const resetWeeklyActivityPoints = base
+	.input(z.object({}))
+	.errors({
+		DATABASE_ERROR: { message: "Failed to reset weekly activity points" },
+	})
+	.output(
+		z.object({
+			success: z.boolean(),
+			usersReset: z.number(),
+			topUsers: z.array(
+				z.object({
+					userId: z.number(),
+					discordId: z.string().nullable(),
+					username: z.string().nullable(),
+					points: z.number(),
+					rank: z.number(),
+					prizes: z.object({ coins: z.number(), xp: z.number() }),
+				}),
+			),
+		}),
+	)
+	.handler(async ({ context, errors }) => {
+		const db = context.db;
+		const now = new Date();
+
+		try {
+			// Get top users by weekly points
+			// Fetch more than 10 to handle ties at the boundary
+			// (e.g., if 12 people are tied for 1st, we want to reward all of them)
+			const topUsers = await db
+				.select({
+					userId: userStatsTable.userId,
+					points: userStatsTable.activityPointsWeekly,
+					coinsCount: userStatsTable.coinsCount,
+					xpCount: userStatsTable.xpCount,
+					user: {
+						id: usersTable.id,
+						discordId: usersTable.discordId,
+						username: usersTable.username,
+					},
+				})
+				.from(userStatsTable)
+				.innerJoin(usersTable, eq(userStatsTable.userId, usersTable.id))
+				.where(gte(userStatsTable.activityPointsWeekly, 1))
+				.orderBy(desc(userStatsTable.activityPointsWeekly))
+				.limit(50);
+
+			// Award prizes to top users with tie handling
+			// If multiple users have the same points, they share the same rank and prize
+			const prizeResults: Array<{
+				userId: number;
+				discordId: string | null;
+				username: string | null;
+				points: number;
+				rank: number;
+				prizes: { coins: number; xp: number };
+			}> = [];
+
+			let currentRank = 0;
+			let previousPoints: number | null = null;
+
+			for (let i = 0; i < topUsers.length; i++) {
+				const user = topUsers[i];
+				if (!user) continue;
+
+				// Only increment rank if points differ from previous user
+				// This means tied users share the same rank and prize
+				if (user.points !== previousPoints) {
+					currentRank = i + 1;
+					previousPoints = user.points;
+
+					// Stop if we've gone past rank 10 (no more prizes to give)
+					if (currentRank > 10) break;
+				}
+
+				const rank = currentRank;
+				const prizes = WEEKLY_PRIZES[rank] ?? { coins: 0, xp: 0 };
+
+				if (prizes.coins > 0 || prizes.xp > 0) {
+					// Award prizes
+					await db
+						.update(userStatsTable)
+						.set({
+							coinsCount: user.coinsCount + prizes.coins,
+							xpCount: user.xpCount + prizes.xp,
+							updatedAt: now,
+						})
+						.where(eq(userStatsTable.userId, user.userId));
+
+					// Log the prize
+					const logData: InsertDbUserStatsLog = {
+						userId: user.userId,
+						activityType: "activity_points_weekly_prize",
+						notes: `Weekly activity points prize - Rank #${rank}: ${user.points} points`,
+						xpEarned: prizes.xp,
+						coinsEarned: prizes.coins,
+					};
+					await db.insert(userStatsLogTable).values(logData);
+				}
+
+				prizeResults.push({
+					userId: user.userId,
+					discordId: user.user.discordId,
+					username: user.user.username,
+					points: user.points,
+					rank,
+					prizes,
+				});
+			}
+
+			// Reset all weekly points
+			await db
+				.update(userStatsTable)
+				.set({
+					activityPointsWeekly: 0,
+					activityPointsDailyCount: 0,
+					lastActivityPointsReset: now,
+					updatedAt: now,
+				})
+				.where(gte(userStatsTable.activityPointsWeekly, 0));
+
+			return {
+				success: true,
+				usersReset: prizeResults.length,
+				topUsers: prizeResults,
+			};
+		} catch (error) {
+			console.error("Error resetting weekly activity points:", error);
+			throw errors.DATABASE_ERROR();
+		}
+	});
+
+/**
+ * Get user's activity points stats
+ */
+export const getUserActivityPoints = base
+	.input(
+		z.object({
+			userId: z.number().optional(),
+			discordId: z.string().optional(),
+		}),
+	)
+	.errors({
+		NOT_FOUND: { message: "User not found" },
+	})
+	.output(
+		z.object({
+			lifetimePoints: z.number(),
+			weeklyPoints: z.number(),
+			weeklyRemaining: z.number(),
+			weeklyCap: z.number(),
+			weeklyRank: z.number().nullable(),
+			lifetimeRank: z.number().nullable(),
+		}),
+	)
+	.handler(async ({ input, context, errors }) => {
+		const db = context.db;
+
+		// Find user
+		let user: { id: number; stats: typeof userStatsTable.$inferSelect | null } | null | undefined = null;
+
+		if (input.userId !== undefined) {
+			user = await db.query.usersTable.findFirst({
+				where: { id: input.userId },
+				with: { stats: true },
+				columns: { id: true },
+			});
+		} else if (input.discordId !== undefined) {
+			user = await db.query.usersTable.findFirst({
+				where: { discordId: input.discordId },
+				with: { stats: true },
+				columns: { id: true },
+			});
+		}
+
+		if (!user || !user.stats) {
+			throw errors.NOT_FOUND();
+		}
+
+		const stats = user.stats;
+
+		// Calculate weekly rank
+		const weeklyRankResult = await db
+			.select({ count: userStatsTable.userId })
+			.from(userStatsTable)
+			.where(gte(userStatsTable.activityPointsWeekly, stats.activityPointsWeekly + 1));
+
+		const weeklyRank = stats.activityPointsWeekly > 0 ? weeklyRankResult.length + 1 : null;
+
+		// Calculate lifetime rank
+		const lifetimeRankResult = await db
+			.select({ count: userStatsTable.userId })
+			.from(userStatsTable)
+			.where(gte(userStatsTable.activityPointsLifetime, stats.activityPointsLifetime + 1));
+
+		const lifetimeRank = stats.activityPointsLifetime > 0 ? lifetimeRankResult.length + 1 : null;
+
+		return {
+			lifetimePoints: stats.activityPointsLifetime,
+			weeklyPoints: stats.activityPointsWeekly,
+			weeklyRemaining: Math.max(0, WEEKLY_CAP - stats.activityPointsWeekly),
+			weeklyCap: WEEKLY_CAP,
+			weeklyRank,
+			lifetimeRank,
+		};
+	});

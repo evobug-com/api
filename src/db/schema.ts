@@ -274,6 +274,13 @@ export const userStatsTable = pgTable("user_stats", {
 	lastSuspiciousActivityAt: timestamptz(),
 	economyBannedUntil: timestamptz(),
 
+	// Activity Points System
+	activityPointsLifetime: integer().notNull().default(0),
+	activityPointsWeekly: integer().notNull().default(0),
+	activityPointsDailyCount: integer().notNull().default(0),
+	lastActivityPointsDay: timestamptz(),
+	lastActivityPointsReset: timestamptz(),
+
 	updatedAt: timestamptz().notNull().defaultNow(),
 });
 

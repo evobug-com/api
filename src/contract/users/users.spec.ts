@@ -75,6 +75,12 @@ describe("Users", () => {
 				suspiciousBehaviorScore: 0,
 				lastSuspiciousActivityAt: null,
 				economyBannedUntil: null,
+				// Activity Points System
+				activityPointsLifetime: 0,
+				activityPointsWeekly: 0,
+				activityPointsDailyCount: 0,
+				lastActivityPointsDay: null,
+				lastActivityPointsReset: null,
 			});
 		});
 

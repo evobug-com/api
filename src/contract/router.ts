@@ -41,6 +41,7 @@ import { listProducts, getProduct, purchase } from "./shop";
 import { list as listReviews, eligibility as reviewEligibility, myReview, submit as submitReview } from "./reviews";
 // Stats & Rewards System
 import {
+	activityPointsLeaderboard,
 	checkAutomationPatterns,
 	checkMessageMilestone,
 	checkServerTagStreak,
@@ -49,9 +50,12 @@ import {
 	claimWork,
 	getServerTagStreak,
 	getTodaysWorkCount,
+	getUserActivityPoints,
 	grantReward,
 	leaderboard,
 	logCaptchaAttempt,
+	resetWeeklyActivityPoints,
+	trackActivityPoints,
 	updateFailedCaptchaCount,
 	updateSuspiciousScore,
 	userDailyCooldown,
@@ -219,6 +223,13 @@ export const router = {
 				checkPatterns: checkAutomationPatterns,
 			},
 			top: leaderboard,
+			// Activity Points System
+			activity: {
+				track: trackActivityPoints, // POST /users/stats/activity/track - Award activity points
+				leaderboard: activityPointsLeaderboard, // GET /users/stats/activity/leaderboard - Get activity rankings
+				get: getUserActivityPoints, // GET /users/stats/activity/get - Get user's activity points
+				resetWeekly: resetWeeklyActivityPoints, // POST /users/stats/activity/resetWeekly - Reset weekly points (scheduler)
+			},
 			//         get: userStats, // GET /users/{userId}/stats
 			//         activities: userStatsActivities, // GET /users/{userId}/stats/activities
 			//         update: updateUserStats, // PATCH /users/{userId}/stats
