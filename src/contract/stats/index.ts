@@ -2136,13 +2136,13 @@ const WEEKLY_PRIZES: Record<number, { coins: number; xp: number }> = {
 	1: { coins: 5000, xp: 2000 },
 	2: { coins: 3000, xp: 1200 },
 	3: { coins: 2000, xp: 800 },
-	4: { coins: 1000, xp: 400 },
-	5: { coins: 1000, xp: 400 },
-	6: { coins: 1000, xp: 400 },
-	7: { coins: 1000, xp: 400 },
-	8: { coins: 1000, xp: 400 },
-	9: { coins: 1000, xp: 400 },
-	10: { coins: 1000, xp: 400 },
+	4: { coins: 800, xp: 320 },
+	5: { coins: 600, xp: 240 },
+	6: { coins: 500, xp: 200 },
+	7: { coins: 400, xp: 160 },
+	8: { coins: 300, xp: 120 },
+	9: { coins: 200, xp: 80 },
+	10: { coins: 100, xp: 40 },
 };
 
 /**
