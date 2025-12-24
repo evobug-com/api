@@ -595,10 +595,6 @@ export const updateTrustScore = base
 				.where(eq(trustScoresTable.userId, input.userId));
 		}
 
-		console.log(
-			`[ANTICHEAT] Trust score updated for user ${input.userId}: ${oldScore} → ${newScore} (${input.reason})`,
-		);
-
 		return {
 			updated: true,
 			newScore,

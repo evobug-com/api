@@ -296,7 +296,6 @@ export class TwelveDataClient {
 
 			// If there are more batches, wait 1 minute to avoid rate limit
 			if (i + BATCH_SIZE < symbols.length) {
-				console.log(`[TwelveData] Waiting 60s before next batch...`);
 				await new Promise((resolve) => setTimeout(resolve, 60000));
 			}
 		}
