@@ -1,7 +1,19 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { insertMessagesLogsSchema, messagesLogsTable, usersTable } from "../../db/schema.ts";
+import { messagesLogsTable, usersTable } from "../../db/schema.ts";
 import { base } from "../shared/os.ts";
+
+// Custom schema for creating message logs - manually typed to fix drizzle-zod inference issue with jsonb
+const createMessageLogInputSchema = z.object({
+	userId: z.number().nullable().optional(),
+	messageId: z.string(),
+	platform: z.string(),
+	channelId: z.string(),
+	content: z.string(),
+	editedContents: z.array(z.string()).nullable().optional(),
+	editCount: z.number().optional(),
+	deletedAt: z.date().nullable().optional(),
+});
 
 // /**
 //  * Message log retrieval contract
@@ -53,7 +65,7 @@ import { base } from "../shared/os.ts";
  * Records message for audit and moderation purpoces
  */
 export const createMessageLog = base
-	.input(insertMessagesLogsSchema)
+	.input(createMessageLogInputSchema)
 	.output(z.boolean())
 	.handler(async ({ input, context, errors }) => {
 		if (!input.userId) {
@@ -75,7 +87,7 @@ export const createMessageLog = base
 			});
 		}
 
-		await context.db.insert(messagesLogsTable).values(input);
+		await context.db.insert(messagesLogsTable).values([input]);
 		return true;
 	});
 

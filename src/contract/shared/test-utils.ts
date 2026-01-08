@@ -2,7 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { pushSchema } from "drizzle-kit/api-postgres";
 import { sql } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
-import type { PgDatabase } from "drizzle-orm/pg-core/db";
+import type { PgAsyncDatabase } from "drizzle-orm/pg-core";
 import { drizzle } from "drizzle-orm/pglite";
 import type { PgliteDatabase } from "drizzle-orm/pglite/driver";
 import { relations } from "../../db/relations.ts";
@@ -25,7 +25,7 @@ export const createTestDatabase = async (_shouldPushSchema = true) => {
 		console.timeEnd("DB Init - Drizzle setup");
 
 		console.time("DB Init - pushSchema");
-		const { apply } = await pushSchema(schema, testDb as unknown as PgDatabase<any>);
+		const { apply } = await pushSchema(schema, testDb as unknown as PgAsyncDatabase<any>);
 		console.timeEnd("DB Init - pushSchema");
 
 		console.time("DB Init - apply");
