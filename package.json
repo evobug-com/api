@@ -30,7 +30,7 @@
 		"oxlint-tsgolint": "^0.10.1"
 	},
 	"dependencies": {
-		"@electric-sql/pglite": "^0.3.14",
+		"@electric-sql/pglite": "^0.3.15",
 		"@orpc/client": "^1.13.2",
 		"@orpc/contract": "^1.13.2",
 		"@orpc/server": "^1.13.2",
