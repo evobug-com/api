@@ -25,7 +25,9 @@
       "Read(//d/projects/evobug.com/**)",
       "WebSearch",
       "Bash(bun add:*)",
-      "Skill(superpowers:brainstorming)"
+      "Skill(superpowers:brainstorming)",
+      "Bash(bun pm:*)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }
