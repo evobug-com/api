@@ -34,7 +34,7 @@
 		"@orpc/client": "^1.13.6",
 		"@orpc/contract": "^1.13.6",
 		"@orpc/server": "^1.13.6",
-		"drizzle-orm": "1.0.0-beta.17-e361198",
+		"drizzle-orm": "1.0.0-beta.17-875d549",
 		"drizzle-zod": "1.0.0-beta.14-56703c9",
 		"jose": "^6.2.1",
 		"node-cron": "^4.2.1",
