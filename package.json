@@ -27,7 +27,7 @@
 		"csv-parse": "^6.2.0",
 		"drizzle-kit": "1.0.0-beta.19-d95b7a4",
 		"oxlint": "^1.56.0",
-		"oxlint-tsgolint": "^0.17.0"
+		"oxlint-tsgolint": "^0.17.1"
 	},
 	"dependencies": {
 		"@electric-sql/pglite": "^0.4.0",
