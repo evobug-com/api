@@ -489,7 +489,7 @@ describe("Reviews", () => {
 		});
 
 		it("should reject invalid token", async () => {
-			expect(
+			await expect(
 				call(
 					submit,
 					{
