@@ -409,7 +409,7 @@ describe("Advanced Automation Pattern Detection", () => {
 				.where(eq(userStatsTable.userId, testUser.id));
 
 			// Try to claim daily
-			expect(
+			await expect(
 				call(
 					claimDaily,
 					{
@@ -421,7 +421,7 @@ describe("Advanced Automation Pattern Detection", () => {
 			).rejects.toThrow("Your economy access is temporarily suspended");
 
 			// Try to claim work
-			expect(
+			await expect(
 				call(
 					claimWork,
 					{

@@ -233,7 +233,7 @@ describe("Achievements", () => {
 		});
 
 		it("should throw NOT_FOUND error for non-existent achievement", async () => {
-			expect(
+			await expect(
 				call(
 					getAchievement,
 					{
@@ -354,7 +354,7 @@ describe("Achievements", () => {
 		});
 
 		it("should throw NOT_FOUND error for non-existent achievement", async () => {
-			expect(
+			await expect(
 				call(
 					updateAchievement,
 					{
@@ -421,7 +421,7 @@ describe("Achievements", () => {
 			});
 
 			// Verify it's actually deleted
-			expect(
+			await expect(
 				call(
 					getAchievement,
 					{
@@ -433,7 +433,7 @@ describe("Achievements", () => {
 		});
 
 		it("should throw NOT_FOUND error for non-existent achievement", async () => {
-			expect(
+			await expect(
 				call(
 					deleteAchievement,
 					{
@@ -1138,7 +1138,7 @@ describe("Achievements", () => {
 			);
 
 			// Try to unlock again
-			expect(
+			await expect(
 				call(
 					unlockAchievement,
 					{
@@ -1273,7 +1273,7 @@ describe("Achievements", () => {
 		});
 
 		it("should throw NOT_FOUND error when progress does not exist", async () => {
-			expect(
+			await expect(
 				call(
 					deleteUserAchievementProgress,
 					{

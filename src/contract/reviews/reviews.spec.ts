@@ -223,7 +223,7 @@ describe("Reviews", () => {
 		});
 
 		it("should reject invalid token", async () => {
-			expect(
+			await expect(
 				call(eligibility, { token: "invalid-token" }, createTestContext(db)),
 			).rejects.toThrow();
 		});
@@ -296,7 +296,7 @@ describe("Reviews", () => {
 		});
 
 		it("should reject invalid token", async () => {
-			expect(
+			await expect(
 				call(myReview, { token: "invalid-token" }, createTestContext(db)),
 			).rejects.toThrow();
 		});
@@ -359,7 +359,7 @@ describe("Reviews", () => {
 				.set({ coinsCount: 200, messagesCount: 100 })
 				.where(eq(userStatsTable.userId, authResult.user.id));
 
-			expect(
+			await expect(
 				call(
 					submit,
 					{
@@ -371,7 +371,7 @@ describe("Reviews", () => {
 				),
 			).rejects.toThrow();
 
-			expect(
+			await expect(
 				call(
 					submit,
 					{
@@ -400,7 +400,7 @@ describe("Reviews", () => {
 				.set({ coinsCount: 200, messagesCount: 100 })
 				.where(eq(userStatsTable.userId, authResult.user.id));
 
-			expect(
+			await expect(
 				call(
 					submit,
 					{
@@ -441,7 +441,7 @@ describe("Reviews", () => {
 			);
 
 			// Second review should fail
-			expect(
+			await expect(
 				call(
 					submit,
 					{
@@ -475,7 +475,7 @@ describe("Reviews", () => {
 				.set({ coinsCount: 50, messagesCount: 100 })
 				.where(eq(userStatsTable.userId, authResult.user.id));
 
-			expect(
+			await expect(
 				call(
 					submit,
 					{

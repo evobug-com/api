@@ -59,7 +59,7 @@ describe("Message Logs", () => {
 		});
 
 		it("should fail when userId is missing", async () => {
-			expect(
+			await expect(
 				call(
 					createMessageLog,
 					{
@@ -75,7 +75,7 @@ describe("Message Logs", () => {
 		});
 
 		it("should fail when user does not exist", async () => {
-			expect(
+			await expect(
 				call(
 					createMessageLog,
 					{
@@ -470,7 +470,7 @@ describe("Message Logs", () => {
 		});
 
 		it("should fail when message doesn't exist", async () => {
-			expect(
+			await expect(
 				call(
 					updateMessageLog,
 					{
@@ -557,7 +557,7 @@ describe("Message Logs", () => {
 		});
 
 		it("should fail when message doesn't exist", async () => {
-			expect(
+			await expect(
 				call(
 					updateMessageDeletedStatus,
 					{
@@ -655,7 +655,7 @@ describe("Message Logs", () => {
 		});
 
 		it("should fail when message doesn't exist", async () => {
-			expect(
+			await expect(
 				call(
 					updateMessageEditedStatus,
 					{
@@ -738,7 +738,7 @@ describe("Message Logs", () => {
 
 		it("should reject null userId", async () => {
 			// Since userId is nullable in the schema but we validate against it
-			expect(
+			await expect(
 				call(
 					createMessageLog,
 					{

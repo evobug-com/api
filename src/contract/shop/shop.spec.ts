@@ -105,7 +105,7 @@ describe("Shop", () => {
 		});
 
 		it("should throw NOT_FOUND for non-existent product", async () => {
-			expect(
+			await expect(
 				call(
 					getProduct,
 					{ id: "00000000-0000-0000-0000-000000000000" },
@@ -119,7 +119,7 @@ describe("Shop", () => {
 		});
 
 		it("should reject invalid UUID format", async () => {
-			expect(
+			await expect(
 				call(getProduct, { id: "invalid-uuid" }, createTestContext(db)),
 			).rejects.toThrow();
 		});
@@ -249,7 +249,7 @@ describe("Shop", () => {
 			);
 
 			// User has 0 coins by default
-			expect(
+			await expect(
 				call(
 					purchase,
 					{
@@ -282,7 +282,7 @@ describe("Shop", () => {
 				.set({ coinsCount: 500 })
 				.where(eq(userStatsTable.userId, authResult.user.id));
 
-			expect(
+			await expect(
 				call(
 					purchase,
 					{
@@ -326,7 +326,7 @@ describe("Shop", () => {
 			);
 
 			// Second purchase should fail
-			expect(
+			await expect(
 				call(
 					purchase,
 					{
@@ -359,7 +359,7 @@ describe("Shop", () => {
 				.set({ coinsCount: 500 })
 				.where(eq(userStatsTable.userId, authResult.user.id));
 
-			expect(
+			await expect(
 				call(
 					purchase,
 					{
@@ -416,7 +416,7 @@ describe("Shop", () => {
 		it("should reject invalid token", async () => {
 			const product = await createTestProduct();
 
-			expect(
+			await expect(
 				call(
 					purchase,
 					{
@@ -444,7 +444,7 @@ describe("Shop", () => {
 				.set({ coinsCount: 500 })
 				.where(eq(userStatsTable.userId, authResult.user.id));
 
-			expect(
+			await expect(
 				call(
 					purchase,
 					{

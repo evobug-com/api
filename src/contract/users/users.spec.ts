@@ -95,7 +95,7 @@ describe("Users", () => {
 			);
 
 			// Try to create another user with the same username
-			expect(
+			await expect(
 				call(
 					createUser,
 					{
@@ -167,7 +167,7 @@ describe("Users", () => {
 		});
 
 		it("should handle updating non-existent user", async () => {
-			expect(
+			await expect(
 				call(
 					updateUser,
 					{
@@ -199,7 +199,7 @@ describe("Users", () => {
 			);
 
 			// Try to update user2 with user1's username
-			expect(
+			await expect(
 				call(
 					updateUser,
 					{
@@ -307,7 +307,7 @@ describe("Users", () => {
 				createTestContext(db),
 			);
 
-			expect(
+			await expect(
 				call(
 					createUser,
 					{
@@ -333,7 +333,7 @@ describe("Users", () => {
 				createTestContext(db),
 			);
 
-			expect(
+			await expect(
 				call(
 					createUser,
 					{
@@ -392,7 +392,7 @@ describe("Users", () => {
 		it("should handle very long username", async () => {
 			const longUsername = "a".repeat(51); // Assuming 50 char limit
 
-			expect(
+			await expect(
 				call(
 					createUser,
 					{
@@ -863,7 +863,7 @@ describe("User retrieval functions", () => {
 				createTestContext(db),
 			);
 
-			expect(
+			await expect(
 				call(
 					changePassword,
 					{
@@ -881,7 +881,7 @@ describe("User retrieval functions", () => {
 		});
 
 		it("should reject with invalid token", async () => {
-			expect(
+			await expect(
 				call(
 					changePassword,
 					{
@@ -905,7 +905,7 @@ describe("User retrieval functions", () => {
 				createTestContext(db),
 			);
 
-			expect(
+			await expect(
 				call(
 					changePassword,
 					{
@@ -968,7 +968,7 @@ describe("User retrieval functions", () => {
 				createTestContext(db),
 			);
 
-			expect(
+			await expect(
 				call(
 					setPassword,
 					{
@@ -985,7 +985,7 @@ describe("User retrieval functions", () => {
 		});
 
 		it("should reject invalid token", async () => {
-			expect(
+			await expect(
 				call(
 					setPassword,
 					{
@@ -1051,7 +1051,7 @@ describe("User retrieval functions", () => {
 				createTestContext(db),
 			);
 
-			expect(
+			await expect(
 				call(
 					linkEmail,
 					{
@@ -1100,7 +1100,7 @@ describe("User retrieval functions", () => {
 				.setExpirationTime("7d")
 				.sign(JWT_SECRET);
 
-			expect(
+			await expect(
 				call(
 					linkEmail,
 					{
@@ -1118,7 +1118,7 @@ describe("User retrieval functions", () => {
 		});
 
 		it("should reject invalid token", async () => {
-			expect(
+			await expect(
 				call(
 					linkEmail,
 					{
@@ -1180,7 +1180,7 @@ describe("User retrieval functions", () => {
 				createTestContext(db),
 			);
 
-			expect(
+			await expect(
 				call(
 					setUsername,
 					{
@@ -1227,7 +1227,7 @@ describe("User retrieval functions", () => {
 				.setExpirationTime("7d")
 				.sign(JWT_SECRET);
 
-			expect(
+			await expect(
 				call(
 					setUsername,
 					{
@@ -1262,7 +1262,7 @@ describe("User retrieval functions", () => {
 				.setExpirationTime("7d")
 				.sign(JWT_SECRET);
 
-			expect(
+			await expect(
 				call(
 					setUsername,
 					{
@@ -1293,7 +1293,7 @@ describe("User retrieval functions", () => {
 				.setExpirationTime("7d")
 				.sign(JWT_SECRET);
 
-			expect(
+			await expect(
 				call(
 					setUsername,
 					{
@@ -1306,7 +1306,7 @@ describe("User retrieval functions", () => {
 		});
 
 		it("should reject invalid token", async () => {
-			expect(
+			await expect(
 				call(
 					setUsername,
 					{
@@ -1369,7 +1369,7 @@ describe("User retrieval functions", () => {
 		});
 
 		it("should reject invalid token", async () => {
-			expect(
+			await expect(
 				call(
 					requestDiscordVerification,
 					{ token: "invalid-token" },

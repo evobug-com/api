@@ -75,7 +75,7 @@ describe("Auth", () => {
 				createTestContext(db),
 			);
 
-			expect(
+			await expect(
 				call(
 					register,
 					{
@@ -103,7 +103,7 @@ describe("Auth", () => {
 				createTestContext(db),
 			);
 
-			expect(
+			await expect(
 				call(
 					register,
 					{
@@ -117,7 +117,7 @@ describe("Auth", () => {
 		});
 
 		it("should reject short passwords", async () => {
-			expect(
+			await expect(
 				call(
 					register,
 					{
@@ -131,7 +131,7 @@ describe("Auth", () => {
 		});
 
 		it("should reject short usernames", async () => {
-			expect(
+			await expect(
 				call(
 					register,
 					{
@@ -145,7 +145,7 @@ describe("Auth", () => {
 		});
 
 		it("should reject invalid email format", async () => {
-			expect(
+			await expect(
 				call(
 					register,
 					{
@@ -212,7 +212,7 @@ describe("Auth", () => {
 		});
 
 		it("should reject login with wrong password", async () => {
-			expect(
+			await expect(
 				call(
 					login,
 					{
@@ -229,7 +229,7 @@ describe("Auth", () => {
 		});
 
 		it("should reject login with non-existent user", async () => {
-			expect(
+			await expect(
 				call(
 					login,
 					{
@@ -246,7 +246,7 @@ describe("Auth", () => {
 		});
 
 		it("should reject empty password", async () => {
-			expect(
+			await expect(
 				call(
 					login,
 					{
@@ -259,7 +259,7 @@ describe("Auth", () => {
 		});
 
 		it("should reject empty username", async () => {
-			expect(
+			await expect(
 				call(
 					login,
 					{
@@ -319,7 +319,7 @@ describe("Auth", () => {
 		});
 
 		it("should reject invalid token", async () => {
-			expect(
+			await expect(
 				call(
 					me,
 					{
@@ -333,7 +333,7 @@ describe("Auth", () => {
 		it("should reject expired token", async () => {
 			// Creating a manually crafted expired token is complex
 			// This test verifies token validation works
-			expect(
+			await expect(
 				call(
 					me,
 					{

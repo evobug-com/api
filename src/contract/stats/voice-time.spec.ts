@@ -256,7 +256,7 @@ describe("Voice Time Milestone", () => {
 		});
 
 		it("should return error for non-existent user", async () => {
-			expect(
+			await expect(
 				call(
 					checkVoiceTimeMilestone,
 					{

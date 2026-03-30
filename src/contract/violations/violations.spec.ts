@@ -236,7 +236,7 @@ describe("Violations", () => {
 		});
 
 		it("should fail when issuer does not exist", async () => {
-			expect(
+			await expect(
 				call(
 					issueViolation,
 					{
@@ -257,7 +257,7 @@ describe("Violations", () => {
 		});
 
 		it("should fail when user does not exist", async () => {
-			expect(
+			await expect(
 				call(
 					issueViolation,
 					{
@@ -591,7 +591,7 @@ describe("Violations", () => {
 		});
 
 		it("should fail when violation does not exist", async () => {
-			expect(call(getViolation, { violationId: 999999 }, createTestContext(db))).rejects.toThrow(
+			await expect(call(getViolation, { violationId: 999999 }, createTestContext(db))).rejects.toThrow(
 				new ORPCError("NOT_FOUND", { message: "Violation not found for the given ID / getViolation" }),
 			);
 		});
@@ -643,7 +643,7 @@ describe("Violations", () => {
 		});
 
 		it("should fail when violation does not exist", async () => {
-			expect(
+			await expect(
 				call(
 					expireViolation,
 					{
@@ -758,7 +758,7 @@ describe("Violations", () => {
 		});
 
 		it("should fail when violation does not exist", async () => {
-			expect(
+			await expect(
 				call(
 					updateViolationReview,
 					{
@@ -910,7 +910,7 @@ describe("Violations", () => {
 
 	describe("Edge cases and error handling", () => {
 		it("should handle empty reason gracefully", async () => {
-			expect(
+			await expect(
 				call(
 					issueViolation,
 					{
@@ -927,7 +927,7 @@ describe("Violations", () => {
 		});
 
 		it("should handle invalid violation type", async () => {
-			expect(
+			await expect(
 				call(
 					issueViolation,
 					{
@@ -944,7 +944,7 @@ describe("Violations", () => {
 		});
 
 		it("should handle invalid severity", async () => {
-			expect(
+			await expect(
 				call(
 					issueViolation,
 					{
@@ -963,7 +963,7 @@ describe("Violations", () => {
 		it("should handle very long reason text", async () => {
 			const longReason = "a".repeat(1001);
 
-			expect(
+			await expect(
 				call(
 					issueViolation,
 					{
@@ -980,7 +980,7 @@ describe("Violations", () => {
 		});
 
 		it("should handle negative expiration days", async () => {
-			expect(
+			await expect(
 				call(
 					issueViolation,
 					{
