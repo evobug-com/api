@@ -108,6 +108,8 @@ import {
 	listViolations,
 	updateViolationReview,
 } from "./violations";
+// Newsletter
+import { subscribe as newsletterSubscribe } from "./newsletter";
 
 export const router = {
 	// Authentication endpoints
@@ -394,6 +396,11 @@ export const router = {
 			history: getSuspensionHistory, // GET /suspensions/{userId}/history
 			autoExpire: autoExpireSuspensions, // PUT /suspensions/auto-expire
 		},
+	},
+
+	// Newsletter
+	newsletter: {
+		subscribe: newsletterSubscribe, // POST /newsletter/subscribe
 	},
 
 	// Message logging endpoints
