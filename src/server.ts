@@ -1,5 +1,6 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import { CORSPlugin } from "@orpc/server/plugins";
+import { handleNewsletterSubscribe } from "./newsletter.ts";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql/postgres";
 import { drizzle } from "drizzle-orm/bun-sql";
 import cron from "node-cron";
@@ -64,6 +65,13 @@ const handler = new RPCHandler(router, {
 const server = Bun.serve({
 	port: PORT,
 	async fetch(request: Request) {
+		const url = new URL(request.url);
+
+		// Plain HTTP endpoints (outside oRPC)
+		if (url.pathname === "/newsletter/subscribe") {
+			return handleNewsletterSubscribe(request);
+		}
+
 		const { matched, response } = await handler.handle(request, {
 			context: { headers: request.headers, db, user: null as unknown as DbUser },
 		});
