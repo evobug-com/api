@@ -26,7 +26,7 @@
 		"@typescript/native-preview": "latest",
 		"csv-parse": "^6.2.1",
 		"drizzle-kit": "1.0.0-beta.22-41a7d21",
-		"oxlint": "^1.59.0",
+		"oxlint": "^1.60.0",
 		"oxlint-tsgolint": "^0.20.0"
 	},
 	"dependencies": {
