@@ -20,6 +20,43 @@ const userAchievementSchema = z.object({
 	updatedAt: z.date(),
 });
 
+/**
+ * Normalize a `metadata` jsonb column read from the database.
+ *
+ * Older bun-sql/postgres drizzle versions had a double-stringification bug
+ * for jsonb (fixed in drizzle-orm 1.0.0-rc.1: "Fixed bun-sql/postgres ...
+ * json[b] data double stringification"). Rows written by those versions
+ * appear as JSON-encoded STRINGS inside the jsonb column instead of objects:
+ *
+ *   pg_typeof(col) = 'jsonb' but jsonb_typeof(col) = 'string'
+ *   value reads as `"{\"streak\":198,...}"` rather than `{streak:198,...}`
+ *
+ * Without this helper the API's stricter output schema (Record<string,
+ * unknown>) rejects those reads with OUTPUT_VALIDATION_FAILED, breaking
+ * downstream consumers (e.g. ServerTagStreak in the bot).
+ *
+ * Safe to remove once the backfill migration
+ * (20260503190000_backfill_jsonb_double_stringification) has been applied
+ * everywhere AND no writers can produce string-shaped values.
+ */
+function normalizeMetadata(value: unknown): Record<string, unknown> {
+	if (value === null || value === undefined) return {};
+	if (typeof value === "object" && !Array.isArray(value)) {
+		return value as Record<string, unknown>;
+	}
+	if (typeof value === "string") {
+		try {
+			const parsed: unknown = JSON.parse(value);
+			if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+				return parsed as Record<string, unknown>;
+			}
+		} catch {
+			// not valid JSON — fall through to empty
+		}
+	}
+	return {};
+}
+
 // ============================================================================
 // ACHIEVEMENT DEFINITIONS - CRUD operations
 // ============================================================================
@@ -204,7 +241,7 @@ export const upsertUserAchievement = base
 
 		return {
 			...userAchievement,
-			metadata: userAchievement.metadata ?? {},
+			metadata: normalizeMetadata(userAchievement.metadata),
 		};
 	});
 
@@ -235,7 +272,7 @@ export const getUserAchievementProgress = base
 
 		return {
 			...userAchievement,
-			metadata: userAchievement.metadata ?? {},
+			metadata: normalizeMetadata(userAchievement.metadata),
 		};
 	});
 
@@ -267,7 +304,7 @@ export const listUserAchievements = base
 
 		return results.map((item) => ({
 			...item,
-			metadata: item.metadata ?? {},
+			metadata: normalizeMetadata(item.metadata),
 		}));
 	});
 
@@ -324,7 +361,7 @@ export const unlockAchievement = base
 
 			return {
 				...created,
-				metadata: created.metadata ?? {},
+				metadata: normalizeMetadata(created.metadata),
 			};
 		}
 
@@ -346,7 +383,7 @@ export const unlockAchievement = base
 
 		return {
 			...updated,
-			metadata: updated.metadata ?? {},
+			metadata: normalizeMetadata(updated.metadata),
 		};
 	});
 
@@ -384,6 +421,6 @@ export const deleteUserAchievementProgress = base
 
 		return {
 			...deleted,
-			metadata: deleted.metadata ?? {},
+			metadata: normalizeMetadata(deleted.metadata),
 		};
 	});
