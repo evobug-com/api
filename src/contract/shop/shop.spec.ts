@@ -11,7 +11,7 @@ import { listProducts, getProduct, purchase } from "./index.ts";
 import { register } from "../auth/index.ts";
 
 describe("Shop", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 
 	beforeEach(async () => {
 		db = await createTestDatabase();

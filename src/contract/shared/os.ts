@@ -9,7 +9,7 @@ import {ORPCError} from "@orpc/client";
 
 export const base = os
 	.$context<{
-		db: BunSQLDatabase<typeof schema, typeof relations>;
+		db: BunSQLDatabase<typeof relations>;
 		user: Partial<DbUser> | undefined;
 		headers: HeadersInit;
 	}>()

@@ -32,7 +32,7 @@ function calculateFee(amount: number): number {
 /**
  * Get latest cached price for an asset
  */
-async function getLatestPrice(context: { db: BunSQLDatabase<typeof schema, typeof relations> }, assetId: number) {
+async function getLatestPrice(context: { db: BunSQLDatabase<typeof relations> }, assetId: number) {
 	const latestPrice = await context.db.query.investmentPriceCacheTable.findFirst({
 		where: {
 			assetId: assetId,
@@ -50,7 +50,7 @@ async function getLatestPrice(context: { db: BunSQLDatabase<typeof schema, typeo
  * Returns a Map of assetId -> price
  */
 export async function batchGetLatestPrices(
-	context: { db: BunSQLDatabase<typeof schema, typeof relations> },
+	context: { db: BunSQLDatabase<typeof relations> },
 	assetIds: number[]
 ): Promise<Map<number, number>> {
 	const priceMap = new Map<number, number>();
@@ -91,7 +91,7 @@ export type InvestmentMetrics = {
  * Shared helper to avoid code duplication
  */
 export async function calculateUserInvestmentMetrics(
-	context: { db: BunSQLDatabase<typeof schema, typeof relations> },
+	context: { db: BunSQLDatabase<typeof relations> },
 	userId: number
 ): Promise<InvestmentMetrics> {
 	// Get user's portfolios

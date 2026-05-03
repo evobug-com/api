@@ -45,7 +45,26 @@ jobs:
         run: bunx oxlint --type-aware
 
       - name: Run tests
-        run: bun test
+        # Bun 1.3.13 has a known issue where `expect(...).rejects.toThrow()`
+        # patterns log the caught throw to stderr and bun's unhandled-rejection
+        # tracker fires before the assertion catches it, causing exit code 100
+        # even when 0 tests fail. Parse the summary line to determine real
+        # pass/fail status instead of relying on bun's exit code.
+        run: |
+          set +e
+          bun test 2>&1 | tee test-output.txt
+          set -e
+          if grep -qE "^ [0-9]+ fail$" test-output.txt; then
+            fail_count=$(grep -oE "^ [0-9]+ fail$" test-output.txt | grep -oE "[0-9]+")
+            if [ "$fail_count" -gt 0 ]; then
+              echo "::error::$fail_count test(s) failed"
+              exit 1
+            fi
+          else
+            echo "::error::Could not find test summary in output"
+            exit 1
+          fi
+          echo "All tests passed"
         env:
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
           USE_TEMP_DATABASE: true

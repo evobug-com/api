@@ -21,7 +21,7 @@ export const createTestDatabase = async (_shouldPushSchema = true) => {
 		console.timeEnd("DB Init - PGlite creation");
 
 		console.time("DB Init - Drizzle setup");
-		testDb = drizzle({ client, schema, relations });
+		testDb = drizzle({ client, relations });
 		console.timeEnd("DB Init - Drizzle setup");
 
 		console.time("DB Init - pushSchema");
@@ -52,10 +52,10 @@ DECLARE
 		console.timeEnd("DB Truncate");
 	}
 
-	return testDb as any as BunSQLDatabase<typeof schema, typeof relations>;
+	return testDb as any as BunSQLDatabase<typeof relations>;
 };
 
-export const createTestContext = (db: BunSQLDatabase<typeof schema, typeof relations>, user?: Partial<DbUser>) => {
+export const createTestContext = (db: BunSQLDatabase<typeof relations>, user?: Partial<DbUser>) => {
 	return {
 		context: {
 			db,

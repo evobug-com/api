@@ -18,7 +18,7 @@ import type { relations } from "../db/relations.ts";
 import { getTwelveDataClient } from "../utils/twelvedata-client.ts";
 
 export class InvestmentSyncService {
-	constructor(private db: BunSQLDatabase<typeof schema, typeof relations>) {}
+	constructor(private db: BunSQLDatabase<typeof relations>) {}
 
 	/**
 	 * Sync all active assets

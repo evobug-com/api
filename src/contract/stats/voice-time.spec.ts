@@ -11,7 +11,7 @@ import { createUser } from "../users";
 import { checkVoiceTimeMilestone } from "./index.ts";
 
 describe("Voice Time Milestone", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 	let testUser: DbUser;
 
 	beforeEach(async () => {

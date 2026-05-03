@@ -11,7 +11,7 @@ import { createUser } from "../users/index.ts";
 import { createMessageLog, updateMessageDeletedStatus, updateMessageEditedStatus, updateMessageLog } from "./index.ts";
 
 describe("Message Logs", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 	let testUserId: number;
 
 	beforeEach(async () => {

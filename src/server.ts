@@ -17,7 +17,7 @@ if (process.env.DATABASE_URL === undefined)
 	throw new Error("DATABASE_URL environment variable is not set. Please set it to your database URL.");
 
 let client: Bun.SQL | undefined;
-let db: BunSQLDatabase<typeof schema, typeof relations>;
+let db: BunSQLDatabase<typeof relations>;
 
 client = new Bun.SQL(process.env.DATABASE_URL as string, {
 	max: 20, // Maximum 20 concurrent connections
@@ -27,7 +27,6 @@ client = new Bun.SQL(process.env.DATABASE_URL as string, {
 });
 db = drizzle({
 	client: client as Bun.SQL,
-	schema,
 	relations,
 });
 
