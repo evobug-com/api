@@ -10,7 +10,7 @@ import { createTestContext, createTestDatabase } from "../shared/test-utils.ts";
 import { login, register, me } from "./index.ts";
 
 describe("Auth", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 
 	beforeEach(async () => {
 		db = await createTestDatabase();

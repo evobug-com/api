@@ -25,7 +25,7 @@ import {
 } from "./index";
 
 describe("Violations", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 	let testUser: Omit<DbUser, "password" | "email">;
 	let issuerUser: Omit<DbUser, "password" | "email">;
 	let reviewerUser: Omit<DbUser, "password" | "email">;

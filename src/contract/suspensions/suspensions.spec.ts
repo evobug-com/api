@@ -18,7 +18,7 @@ import {
 } from "./index";
 
 describe("Suspensions", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 	let testUser: DbUser;
 	let issuerUser: DbUser;
 	let lifterUser: DbUser;

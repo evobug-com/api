@@ -11,7 +11,7 @@ import { createUser, getAllDiscordIds, updateUser, getUserOrders, getEconomyActi
 import { register } from "../auth/index.ts";
 
 describe("Users", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 
 	beforeEach(async () => {
 		db = await createTestDatabase();
@@ -560,7 +560,7 @@ describe("Users", () => {
 });
 
 describe("User retrieval functions", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 
 	beforeEach(async () => {
 		db = await createTestDatabase();

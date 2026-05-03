@@ -10,7 +10,7 @@ import { createUser } from "../users/index.ts";
 import { getTodaysWorkCount } from "./index.ts";
 
 describe("getTodaysWorkCount functionality", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 	let testUserId: number;
 	let testUserId2: number;
 

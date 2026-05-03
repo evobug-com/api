@@ -22,7 +22,7 @@ import {
 } from "./index.ts";
 
 describe("Achievements", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 	let testUser: Omit<DbUser, "password" | "email">;
 
 	beforeEach(async () => {

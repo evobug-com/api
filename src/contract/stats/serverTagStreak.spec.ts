@@ -11,7 +11,7 @@ import { createUser } from "../users/index.ts";
 import { checkServerTagStreak, getServerTagStreak } from "./index.ts";
 
 describe("Server Tag Streak functionality", () => {
-	let db: BunSQLDatabase<typeof schema, typeof relations>;
+	let db: BunSQLDatabase<typeof relations>;
 	let testUserId: number;
 
 	beforeEach(async () => {

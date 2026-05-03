@@ -42,8 +42,8 @@
 		"zod": "^4.4.1"
 	},
 	"overrides": {
-		"drizzle-orm": "1.0.0-beta.8-e601f80",
-		"drizzle-zod": "1.0.0-beta.8-e601f80",
-		"drizzle-kit": "1.0.0-beta.8-e601f80"
+		"drizzle-orm": "1.0.0-rc.1",
+		"drizzle-zod": "1.0.0-beta.14-56703c9",
+		"drizzle-kit": "1.0.0-rc.1"
 	}
 }
