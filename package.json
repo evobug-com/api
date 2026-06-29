@@ -25,7 +25,7 @@
 		"@types/pg": "^8.20.0",
 		"@typescript/native-preview": "latest",
 		"csv-parse": "^6.2.1",
-		"drizzle-kit": "1.0.0-rc.4-273829f",
+		"drizzle-kit": "1.0.0-rc.4",
 		"oxlint": "^1.71.0",
 		"oxlint-tsgolint": "^0.23.0"
 	},
@@ -34,7 +34,7 @@
 		"@orpc/client": "^1.14.6",
 		"@orpc/contract": "^1.14.6",
 		"@orpc/server": "^1.14.6",
-		"drizzle-orm": "1.0.0-rc.4-273829f",
+		"drizzle-orm": "1.0.0-rc.4",
 		"drizzle-zod": "1.0.0-beta.14-56703c9",
 		"jose": "^6.2.3",
 		"node-cron": "^4.5.0",
