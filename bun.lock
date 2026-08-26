@@ -5,7 +5,7 @@
     "": {
       "name": "api",
       "dependencies": {
-        "@electric-sql/pglite": "^0.5.5",
+        "@electric-sql/pglite": "^0.5.6",
         "@orpc/client": "^1.15.0",
         "@orpc/contract": "^1.15.0",
         "@orpc/server": "^1.15.0",
@@ -36,7 +36,7 @@
   "packages": {
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.11.0", "", {}, "sha512-hD3pekGiPg0WPCCGAZmusBBJsDqGUR66Y452YgQsZOnkdQ7ViEPKuyP4huUGEZQefp8g34RRodXYmJ2TbCH+tg=="],
 
-    "@electric-sql/pglite": ["@electric-sql/pglite@0.5.5", "", {}, "sha512-QeZ+oB7QaU4EJj2awrB8hwFZ5TXxLRBQ9Gfq0dQauYDdWsRtuWRCERgtri35vRfL07KQHlVlc/4Qxvn7a5AXeA=="],
+    "@electric-sql/pglite": ["@electric-sql/pglite@0.5.6", "", {}, "sha512-ipn6AOHouIRwNSVL+0hIRuM3yDwAWgRmvZuj+45sudzKpmdPbG8hQuQDZ4A8l7U8E0l7u6pJ/VtMEW42w+vEKQ=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.25.10", "", { "os": "aix", "cpu": "ppc64" }, "sha512-0NFWnA+7l41irNuaSVlLfgNT12caWJVLzp5eAVhZ0z1qpxbockccEt3s+149rE64VUI3Ml2zt8Nv5JVc4QXTsw=="],
 
